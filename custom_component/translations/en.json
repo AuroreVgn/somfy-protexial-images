@@ -1,0 +1,201 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Provide your Protexial central local web interface URL",
+        "data": {
+          "url": "URL",
+          "single_instance_allowed": "Single instane allowed"
+        }
+      },
+      "login": {
+        "description": "Provide code for challenge {challenge}",
+        "data": {
+          "username": "Username",
+          "password": "Password",
+          "code": "Code"
+        }
+      },
+      "admin_login": {
+        "description": "Provide code for challenge {challenge}",
+        "data": {
+          "password": "Password",
+          "code": "Code challenge"
+        }
+      },
+      "user_login": {
+        "description": "Enter the password for the control panel user account",
+        "data": {
+          "password": "Password",
+          "code": "Code"
+        }
+      },
+      "config": {
+        "description": "Choose other optional arm modes in addition to 'Arm away (Zones A+B+C)'",
+        "data": {
+          "night_zones": "Arm night zone(s)",
+          "home_zones": "Arm home zone(s)",
+          "arm_code": "Optional 4 digits arm code",
+          "scan_interval": "Refresh interval in seconds — 0 disables automatic refresh",
+          "image_server_url": "Local image server URL",
+          "image_count": "Number of recent photos to expose"
+        }
+      }
+    },
+    "error": {
+      "auth": "Wrong Username/Password/Code.",
+      "connection": "Unable to connect to the server.",
+      "arm_code": "Arm code must be 4 digits.",
+      "same_zones": "Selected zones for night and away arm modes must be different."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Choose other optional arm modes in addition to 'Arm away (Zones A+B+C)'",
+        "data": {
+          "night_zones": "Arm night zone(s)",
+          "home_zones": "Arm home zone(s)",
+          "arm_code": "Optional 4 digits arm code",
+          "scan_interval": "Scan interval (seconds)",
+          "image_server_url": "Local image server URL",
+          "image_count": "Number of recent photos to expose"
+        }
+      }
+    },
+    "error": {
+      "arm_code": "Arm code must be 4 digits.",
+      "same_zones": "Selected zones for night and away arm modes must be different."
+    }
+  },
+  "selector": {
+    "zones": {
+      "options": {
+        "0": "Arm mode disabled",
+        "1": "A",
+        "2": "B",
+        "4": "C",
+        "3": "A + B",
+        "6": "B + C",
+        "5": "A + C"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "opegsm": {
+        "name": "GSM Provider"
+      },
+      "recgsm": {
+        "name": "GSM Signal (/5)"
+      },
+      "last_sync": {
+        "name": "Last Sync"
+      }
+    },
+    "alarm_control_panel": {
+      "alarm": {
+        "name": "Alarm"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh data"
+      },
+      "reset_battery_err": {
+        "name": "Reset Battery Error"
+      },
+      "reset_alarm_err": {
+        "name": "Reset Alarm Error"
+      },
+      "reset_link_err": {
+        "name": "Reset Radio Link Error"
+      },
+      "start_image_surveillance": {
+        "name": "Start image surveillance"
+      },
+      "stop_image_surveillance": {
+        "name": "Stop image surveillance"
+      }
+    },
+    "binary_sensor": {
+      "battery": {
+        "name": "Battery",
+        "state": {
+          "on": "Check element list",
+          "off": "OK"
+        }
+      },
+      "alarm": {
+        "name": "Motion",
+        "state": {
+          "on": "Detected",
+          "off": "Not detected"
+        }
+      },
+      "door": {
+        "name": "Doors or windows",
+        "state": {
+          "on": "Opened",
+          "off": "Closed"
+        }
+      },
+      "box": {
+        "name": "Selfprotection",
+        "state": {
+          "on": "Box opened",
+          "off": "OK"
+        }
+      },
+      "radio": {
+        "name": "Central <-> Sensors Communication",
+        "state": {
+          "on": "OK",
+          "off": "Check element list"
+        }
+      },
+      "gsm": {
+        "name": "GSM Communication",
+        "state": {
+          "on": "OK",
+          "off": "No network"
+        }
+      },
+      "camera": {
+        "name": "Camera",
+        "state": {
+          "on": "Connected",
+          "off": "Disconnected"
+        }
+      },
+      "element_aggregate": {
+        "state": {
+          "on": "Problem",
+          "off": "OK"
+        }
+      },
+      "image_surveillance": {
+        "name": "Image surveillance",
+        "state": {
+          "on": "Active",
+          "off": "Stopped"
+        }
+      }
+    },
+    "cover": {
+      "cover": {
+        "name": "Covers"
+      }
+    },
+    "light": {
+      "light": {
+        "name": "Lights"
+      }
+    },
+    "image": {
+      "recent_image": {
+        "name": "Recent image {number}"
+      }
+    }
+  }
+}
