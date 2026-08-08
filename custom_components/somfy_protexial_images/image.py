@@ -105,7 +105,9 @@ class SomfyRecentImage(CoordinatorEntity, ImageEntity):
         """Expose useful metadata for dashboards and automations."""
         if not self._image:
             return {}
+    
         return {
+            "source_url": self._image_url_value(self._image),
             "detector": self._image.get("detector"),
             "type": self._image.get("type"),
             "event": self._image.get("event"),
