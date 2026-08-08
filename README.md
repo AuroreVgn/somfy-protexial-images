@@ -28,3 +28,10 @@ Modèle testé :
 > **MERCI D'UTILISER LE REPOS OFFICIEL DE [AuroreVgn](https://github.com/AuroreVgn/somfy-protexial)**
 > 
 > **PLEASE USE OFFICAL REPO HERE [AuroreVgn](https://github.com/AuroreVgn/somfy-protexial)**
+
+----
+
+> [!CAUTION]
+> Modifications à partir de la version [2.0.15](https://github.com/AuroreVgn/somfy-protexial/releases/tag/2.0.15)
+> 
+> Ne prends pas en compte les modifications de [cette issue](https://github.com/AuroreVgn/somfy-protexial/issues/12)
