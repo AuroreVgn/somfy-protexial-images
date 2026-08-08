@@ -1,0 +1,211 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Saisissez l'URL de l'interface web locale de votre centrale",
+        "data": {
+          "url": "URL",
+          "single_instance_allowed": "Une seule instance autorisée"
+        }
+      },
+      "login": {
+        "description": "Saisissez le code pour le challenge {challenge}",
+        "data": {
+          "username": "Nom d'utilisateur",
+          "password": "Mot de passe",
+          "code": "Code"
+        }
+      },
+      "admin_login": {
+        "description": "Saisissez le code correspondant au challenge {challenge}",
+        "data": {
+          "password": "Mot de passe",
+          "code": "Code challenge"
+        }
+      },
+      "user_login": {
+        "description": "Saissiez le mot de passe utilisateur de la centrale",
+        "data": {
+          "password": "Mot de passe",
+          "code": "Code"
+        }
+      },
+      "config": {
+        "description": "Choisissez d'autres modes optionnels d'armement en plus de 'Armer en absence (Zones A+B+C)'",
+        "data": {
+          "night_zones": "Zone(s) Nuit",
+          "home_zones": "Zone(s) en présence",
+          "arm_code": "Code d'armement à 4 chiffres optionnel",
+          "scan_interval": "Intervalle d’actualisation en secondes — 0 désactive l’actualisation automatique",
+          "image_server_url": "URL du serveur local des images",
+          "image_count": "Nombre de photos récentes à exposer"
+        }
+      }
+    },
+    "error": {
+      "auth": "Nom d'utilisateur/Mot de passe/Code Erroné.",
+      "connection": "Impossible de joindre le serveur.",
+      "arm_code": "Le code d'armement doit comporter 4 chiffres.",
+      "same_zones": "Les zones choisies pour armement de nuit en en absence doivent être différents."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Choisissez d'autres modes optionnels d'armement en plus de 'Armer en absence (Zones A+B+C)'",
+        "data": {
+          "night_zones": "Zone(s) Nuit",
+          "home_zones": "Zone(s) en présence",
+          "arm_code": "Code d'armement à 4 chiffres optionnel",
+          "scan_interval": "Intervalle de rafraîchissement (secondes)",
+          "image_server_url": "URL du serveur local des images",
+          "image_count": "Nombre de photos récentes à exposer"
+        }
+      }
+    },
+    "error": {
+      "arm_code": "Le code d'armement doit comporter 4 chiffres.",
+      "same_zones": "Les zones choisies pour armement de nuit et en absence doivent être différents."
+    }
+  },
+  "selector": {
+    "zones": {
+      "options": {
+        "0": "Mode d'armement désactivé",
+        "1": "A",
+        "2": "B",
+        "4": "C",
+        "3": "A + B",
+        "6": "B + C",
+        "5": "A + C"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "opegsm": {
+        "name": "Opérateur GSM",
+        "state": {
+          "orange": "Orange",
+          "orange f": "Orange",
+          "sfr": "SFR",
+          "bouygues": "Bouygues Telecom",
+          "bouygues telecom": "Bouygues Telecom",
+          "free": "Free Mobile",
+          "free mobile": "Free Mobile",
+          "-": "Non disponible"
+        }
+      },
+      "recgsm": {
+        "name": "Signal GSM (/5)"
+      },
+      "last_sync": {
+        "name": "Dernière synchronisation"
+      }
+    },
+    "alarm_control_panel": {
+      "alarm": {
+        "name": "Alarme"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Actualiser les données"
+      },
+      "reset_battery_err": {
+        "name": "Réinitialiser défaut piles"
+      },
+      "reset_alarm_err": {
+        "name": "Réinitialiser défaut alarme"
+      },
+      "reset_link_err": {
+        "name": "Réinitialiser défaut liaison radio"
+      },
+      "start_image_surveillance": {
+        "name": "Démarrer la surveillance images"
+      },
+      "stop_image_surveillance": {
+        "name": "Arrêter la surveillance images"
+      }
+    },
+    "binary_sensor": {
+      "battery": {
+        "name": "Batterie",
+        "state": {
+          "on": "Vérifier la liste des éléments",
+          "off": "OK"
+        }
+      },
+      "alarm": {
+        "name": "Mouvement",
+        "state": {
+          "on": "Détecté",
+          "off": "Non détecté"
+        }
+      },
+      "door": {
+        "name": "Portes ou fenêtres",
+        "state": {
+          "on": "Ouvertes",
+          "off": "Fermées"
+        }
+      },
+      "box": {
+        "name": "Autoprotection",
+        "state": {
+          "on": "Boîtier ouvert",
+          "off": "OK"
+        }
+      },
+      "radio": {
+        "name": "Comm Centrale <-> Capteurs",
+        "state": {
+          "on": "OK",
+          "off": "Vérifier la liste des éléments"
+        }
+      },
+      "gsm": {
+        "name": "Communication GSM",
+        "state": {
+          "on": "OK",
+          "off": "Pas de réseau"
+        }
+      },
+      "camera": {
+        "name": "Caméra",
+        "state": {
+          "on": "Connectée",
+          "off": "Déconnectée"
+        }
+      },
+      "element_aggregate": {
+        "state": {
+          "on": "Problème",
+          "off": "OK"
+        }
+      },
+      "image_surveillance": {
+        "name": "Surveillance images",
+        "state": {
+          "on": "Active",
+          "off": "Arrêtée"
+        }
+      }
+    },
+    "cover": {
+      "cover": {
+        "name": "Volets"
+      }
+    },
+    "light": {
+      "light": {
+        "name": "Lumières"
+      }
+    },
+    "image": {
+      "recent_image": {
+        "name": "Image récente {number}"
+      }
+    }
+  }
+}
