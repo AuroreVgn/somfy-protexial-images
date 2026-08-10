@@ -17,5 +17,5 @@
     "pyquery==2.0.0",
     "cssselect<1.5"
   ],
-  "version": "3.0.3"
+  "version": "3.0.4"
 }

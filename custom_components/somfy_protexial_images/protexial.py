@@ -600,9 +600,13 @@ class SomfyProtexial:
         self.codes = codes
 
     async def logout(self):
-        """Logout and clear session cookie."""
-        await self.__do_call("get", Page.LOGOUT, retry=False, login=False)
-        self.cookie = None
+        """Logout on a best-effort basis and always clear the local session."""
+        try:
+            await self.__do_call("get", Page.LOGOUT, retry=False, login=False)
+        except SomfyException as ex:
+            _LOGGER.debug("Logout failed (ignored): %s", ex)
+        finally:
+            self.cookie = None
 
     async def get_status(self) -> Status:
         page_is_authenticated = self.api.is_page_authenticated(Page.STATUS)
