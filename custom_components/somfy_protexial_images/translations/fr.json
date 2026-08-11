@@ -101,6 +101,21 @@
       },
       "last_sync": {
         "name": "Dernière synchronisation"
+      },
+      "last_image_event": {
+        "name": "Dernier événement image"
+      },
+      "last_image_event_count": {
+        "name": "Images du dernier événement"
+      },
+      "last_image_age": {
+        "name": "Âge de la dernière image"
+      },
+      "last_ftp": {
+        "name": "Dernière réception FTP"
+      },
+      "last_local_communication": {
+        "name": "Dernière communication serveur local"
       }
     },
     "alarm_control_panel": {
@@ -189,6 +204,13 @@
         "state": {
           "on": "Active",
           "off": "Arrêtée"
+        }
+      },
+      "image_transmitter": {
+        "name": "Liaison transmetteur images",
+        "state": {
+          "on": "Connectée",
+          "off": "Déconnectée"
         }
       }
     },

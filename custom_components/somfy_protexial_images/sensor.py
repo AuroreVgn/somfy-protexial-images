@@ -55,6 +55,7 @@ async def async_setup_entry(
             device_class=sensor.get("device_class"),
             icon=sensor.get("icon"),
             entity_category=sensor.get("entity_category"),
+            native_unit_of_measurement=sensor.get("native_unit_of_measurement"),
             suggested_display_precision=sensor.get("suggested_display_precision"),
         )
         entity_class = (

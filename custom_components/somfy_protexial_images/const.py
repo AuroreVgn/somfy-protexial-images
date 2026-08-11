@@ -4,7 +4,7 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 # Added to handle sensors
 from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import EntityCategory
+from homeassistant.const import EntityCategory, UnitOfTime
 
 DOMAIN = "somfy_protexial"
 IMAGE_SURVEILLANCE_STATE_SIGNAL = f"{DOMAIN}_image_surveillance_state"
@@ -99,6 +99,14 @@ IMAGE_SURVEILLANCE_BINARY_SENSOR = {
     "icon_unknown": "mdi:camera-question-outline",
 }
 
+IMAGE_TRANSMITTER_BINARY_SENSOR = {
+    "id": "image_transmitter",
+    "translation_key": "image_transmitter",
+    "icon_on": "mdi:link",
+    "icon_off": "mdi:link-off",
+    "icon_unknown": "mdi:lan-pending",
+}
+
 BINARY_SENSORS = [
     {
         "id": "battery",
@@ -174,6 +182,37 @@ SENSORS = [
         "id": "recgsm",
         "translation_key": "recgsm",
         "icon": "mdi:signal-2g",
+    },
+    {
+        "id": "last_image_event",
+        "translation_key": "last_image_event",
+        "icon": "mdi:calendar-range",
+    },
+    {
+        "id": "last_image_event_count",
+        "translation_key": "last_image_event_count",
+        "icon": "mdi:image-multiple",
+    },
+    {
+        "id": "last_image_age",
+        "translation_key": "last_image_age",
+        "device_class": SensorDeviceClass.DURATION,
+        "native_unit_of_measurement": UnitOfTime.SECONDS,
+        "icon": "mdi:timer-sand",
+    },
+    {
+        "id": "last_ftp",
+        "translation_key": "last_ftp",
+        "device_class": SensorDeviceClass.TIMESTAMP,
+        "icon": "mdi:file-download",
+        "entity_category": EntityCategory.DIAGNOSTIC,
+    },
+    {
+        "id": "last_local_communication",
+        "translation_key": "last_local_communication",
+        "device_class": SensorDeviceClass.TIMESTAMP,
+        "icon": "mdi:web-check",
+        "entity_category": EntityCategory.DIAGNOSTIC,
     },
     {
         # Diagnostic entity mirroring Jeedom's lastCommunication/timeout

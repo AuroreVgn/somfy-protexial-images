@@ -22,6 +22,7 @@ from .const import (
     DOMAIN,
     IMAGE_SURVEILLANCE_STATE_SIGNAL,
     IMAGE_SURVEILLANCE_BINARY_SENSOR,
+    IMAGE_TRANSMITTER_BINARY_SENSOR,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -239,6 +240,13 @@ async def async_setup_entry(
             entry_id=config_entry.entry_id,
         )
     )
+    sensors.append(
+        SomfyImageTransmitterBinarySensor(
+            device_info=device_info,
+            coordinator=coordinator,
+            entry_id=config_entry.entry_id,
+        )
+    )
 
     async_add_entities(sensors)
 
@@ -296,6 +304,54 @@ class SomfyImageSurveillanceBinarySensor(BinarySensorEntity, RestoreEntity):
     def _handle_surveillance_state(self, state: bool) -> None:
         """Update state after a successful start/stop command."""
         self._state = state
+        self.async_write_ha_state()
+
+
+class SomfyImageTransmitterBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Connection state shown by the centrale's image transmitter icon."""
+
+    _attr_has_entity_name = True
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+
+    def __init__(self, device_info, coordinator, entry_id: str) -> None:
+        super().__init__(coordinator)
+        self.entity_description = BinarySensorEntityDescription(
+            key=IMAGE_TRANSMITTER_BINARY_SENSOR["id"],
+            translation_key=IMAGE_TRANSMITTER_BINARY_SENSOR["translation_key"],
+            device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        )
+        self._attr_translation_key = self.entity_description.translation_key
+        self._attr_unique_id = f"{DOMAIN}_{entry_id}_image_transmitter"
+        self._attr_device_info = device_info
+
+    @property
+    def is_on(self) -> bool | None:
+        """0x00 is the Somfy 'communication OK' icon; other codes are faults."""
+        value = (self.coordinator.data or {}).get("image_transmitter")
+        if value is None:
+            return None
+        return str(value).lower() == "0x00"
+
+    @property
+    def icon(self) -> str:
+        value = (self.coordinator.data or {}).get("image_transmitter")
+        if value is None:
+            return IMAGE_TRANSMITTER_BINARY_SENSOR["icon_unknown"]
+        return (
+            IMAGE_TRANSMITTER_BINARY_SENSOR["icon_on"]
+            if self.is_on
+            else IMAGE_TRANSMITTER_BINARY_SENSOR["icon_off"]
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        data = self.coordinator.data or {}
+        return {
+            "somfy_status": data.get("image_transmitter"),
+            "next_update": data.get("image_transmitter_next_update"),
+        }
+
+    def _handle_coordinator_update(self) -> None:
         self.async_write_ha_state()
 
 

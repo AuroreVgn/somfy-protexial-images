@@ -91,6 +91,21 @@
       },
       "last_sync": {
         "name": "Laatste synchronisatie"
+      },
+      "last_image_event": {
+        "name": "Laatste afbeeldingsgebeurtenis"
+      },
+      "last_image_event_count": {
+        "name": "Afbeeldingen in laatste gebeurtenis"
+      },
+      "last_image_age": {
+        "name": "Leeftijd van laatste afbeelding"
+      },
+      "last_ftp": {
+        "name": "Laatste FTP-ontvangst"
+      },
+      "last_local_communication": {
+        "name": "Laatste communicatie met lokale server"
       }
     },
     "alarm_control_panel": {
@@ -179,6 +194,13 @@
         "state": {
           "on": "Actief",
           "off": "Gestopt"
+        }
+      },
+      "image_transmitter": {
+        "name": "Verbinding beeldzender",
+        "state": {
+          "on": "Verbonden",
+          "off": "Niet verbonden"
         }
       }
     },

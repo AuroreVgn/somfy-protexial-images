@@ -867,6 +867,84 @@ class SomfyProtexial:
         form = self.api.get_reset_link_err_payload()
         await self.__erase_default(form)
 
+
+    async def get_image_transmitter_status(self) -> dict:
+        """Read the transmitter connection state from the image page.
+
+        The Somfy page renders the "Liaison transmetteur" icon through one of
+        these CSS classes:
+          - domisdns_status_com_0x00 -> communication OK
+          - domisdns_status_com_0x01/0x02/0x03 -> communication fault
+          - domisdns_status_com_off -> communication disabled/off
+
+        The exact page path depends on firmware, so use the API-specific path
+        first and then the two known variants.
+        """
+        candidates = []
+        configured = self.api.get_page(Page.CAMERA)
+        for candidate in (configured, "/fr/u_regcam.htm", "/u_regcam.htm"):
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+
+        last_exception = None
+        for candidate in candidates:
+            try:
+                response = await self.__do_call("get", candidate)
+                html = await response.text(self.api.get_encoding())
+                dom = pq(html)
+
+                status_node = dom("td[class^='domisdns_status_com_']").eq(0)
+                css_class = status_node.attr("class") if status_node else None
+
+                match = re.search(
+                    r"domisdns_status_com_(off|0x0[0-3])",
+                    css_class or "",
+                    re.IGNORECASE,
+                )
+                if not match:
+                    _LOGGER.debug(
+                        "No transmitter status class found on image page %s",
+                        candidate,
+                    )
+                    continue
+
+                raw_status = match.group(1).lower()
+
+                # Keep the textual countdown as useful diagnostic metadata.
+                page_text = " ".join(dom.text().split())
+                next_update = None
+                countdown = re.search(
+                    r"(Prochaine\s+mise\s+.{0,3}\s*jour\s+dans\s+[^.]+?(?:min|minute|minutes|s|seconde|secondes))",
+                    page_text,
+                    re.IGNORECASE,
+                )
+                if countdown:
+                    next_update = countdown.group(1).strip()
+
+                return {
+                    "status": raw_status,
+                    "connected": raw_status == "0x00",
+                    "next_update": next_update,
+                    "source_page": candidate,
+                }
+            except SomfyException as ex:
+                last_exception = ex
+                _LOGGER.debug(
+                    "Unable to read image transmitter state from %s: %s",
+                    candidate,
+                    ex,
+                )
+
+        if last_exception is not None:
+            raise last_exception
+
+        return {
+            "status": None,
+            "connected": None,
+            "next_update": None,
+            "source_page": None,
+        }
+
     async def __image_surveillance_command(self, form: dict):
         """POST a surveillance command to the camera/images page.
 

@@ -79,6 +79,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     last_status = None
     last_elements = []
     last_images = []
+    last_image_event = None
+    last_image_event_count = None
+    last_ftp = None
+    last_local_communication = None
+    last_image_transmitter = None
+    last_image_transmitter_next_update = None
 
     image_server_url = str(
         entry.data.get(CONF_IMAGE_SERVER_URL, "") or ""
@@ -87,6 +93,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def _get_status():
         nonlocal last_status, last_elements, last_images
+        nonlocal last_image_event, last_image_event_count
+        nonlocal last_ftp, last_local_communication
+        nonlocal last_image_transmitter, last_image_transmitter_next_update
         try:
             st = await protexial.get_status()
             current_status = {
@@ -131,9 +140,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 last_status = current_status
                 last_elements = await protexial.get_elements()
 
+            # Read the image transmitter link directly from u_regcam.htm.
+            # This is the state represented by Somfy's "Liaison transmetteur"
+            # icon (domisdns_status_com_0x00 / 0x01 / 0x02 / 0x03 / off).
+            # A temporary failure here must not make the alarm unavailable:
+            # retain the last successfully read value.
+            try:
+                transmitter = await protexial.get_image_transmitter_status()
+                if transmitter.get("status") is not None:
+                    last_image_transmitter = transmitter.get("status")
+                    last_image_transmitter_next_update = transmitter.get("next_update")
+            except Exception as transmitter_err:
+                _LOGGER.warning(
+                    "Unable to refresh Somfy image transmitter status: %s",
+                    transmitter_err,
+                )
+
             # Optional local image server (Somfy local stack). Image errors
             # must never make the alarm entities unavailable, so retain the
-            # last successful list if the gallery/API is temporarily down.
+            # last successful values if the gallery/API is temporarily down.
             if image_server_url:
                 try:
                     async with session.get(
@@ -153,17 +178,99 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         image_err,
                     )
 
+                # Latest event metadata. The event endpoint gives the real
+                # image count even when it is greater than the number of
+                # recent image entities configured in Home Assistant.
+                try:
+                    async with session.get(
+                        f"{image_server_url}/api/events",
+                        params={"limit": 1},
+                        timeout=10,
+                    ) as response:
+                        response.raise_for_status()
+                        events_payload = await response.json(content_type=None)
+                    events = events_payload.get("events", [])
+                    if isinstance(events, list) and events:
+                        latest_event = events[0]
+                        if isinstance(latest_event, dict):
+                            last_image_event = latest_event.get("event")
+                            last_image_event_count = latest_event.get("image_count")
+                except Exception as event_err:
+                    _LOGGER.warning(
+                        "Unable to refresh Somfy image events from %s: %s",
+                        image_server_url,
+                        event_err,
+                    )
+                    # Compatibility fallback for an older stack.
+                    if last_images:
+                        last_image_event = last_images[0].get("event")
+                        last_image_event_count = sum(
+                            1
+                            for image in last_images
+                            if image.get("event") == last_image_event
+                        )
+
+                # Diagnostics exported by the newer local stack.
+                try:
+                    async with session.get(
+                        f"{image_server_url}/api/status",
+                        timeout=10,
+                    ) as response:
+                        response.raise_for_status()
+                        stack_status = await response.json(content_type=None)
+
+                    ftp_value = stack_status.get("last_ftp")
+                    if ftp_value:
+                        parsed_ftp = dt_util.parse_datetime(str(ftp_value))
+                        if parsed_ftp is not None:
+                            last_ftp = parsed_ftp
+
+                    communication_value = stack_status.get("last_communication")
+                    if communication_value:
+                        parsed_communication = dt_util.parse_datetime(
+                            str(communication_value)
+                        )
+                        if parsed_communication is not None:
+                            last_local_communication = parsed_communication
+                except Exception as status_err:
+                    _LOGGER.warning(
+                        "Unable to refresh Somfy local stack status from %s: %s",
+                        image_server_url,
+                        status_err,
+                    )
+
             # Mirrors Jeedom's lastCommunication/timeout diagnostic (updated
             # on every successful poll in checkAndUpdateCmdProtexiom()): a
             # timestamp of the last successful exchange with the centrale,
             # exposed as a dedicated diagnostic sensor (see const.py SENSORS
             # "last_sync") so a non-responding centrale can be spotted
             # without digging through the logs.
+            last_image_age = None
+            if last_images:
+                received_at = last_images[0].get("received_at")
+                if received_at:
+                    parsed_received = dt_util.parse_datetime(str(received_at))
+                    if parsed_received is not None:
+                        now = dt_util.utcnow()
+                        if parsed_received.tzinfo is None:
+                            parsed_received = parsed_received.replace(tzinfo=now.tzinfo)
+                        last_image_age = max(
+                            0,
+                            int((now - parsed_received).total_seconds()),
+                        )
+
             status_dict = {
                 **current_status,
                 "elements": last_elements,
                 "last_sync": dt_util.utcnow(),
                 "images": last_images,
+                "image_transmitter": last_image_transmitter,
+                "image_transmitter_next_update": last_image_transmitter_next_update,
+                "last_image_event": last_image_event,
+                "last_image_event_count": last_image_event_count,
+                "last_image_age": last_image_age,
+                "last_ftp": last_ftp,
+                "last_local_communication": last_local_communication,
             }
             return status_dict
         except Exception as err:
