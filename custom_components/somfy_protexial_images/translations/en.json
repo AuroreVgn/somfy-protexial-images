@@ -38,7 +38,9 @@
           "arm_code": "Optional 4 digits arm code",
           "scan_interval": "Refresh interval in seconds — 0 disables automatic refresh",
           "image_server_url": "Local image server URL",
-          "image_count": "Number of recent photos to expose"
+          "image_count": "Number of recent photos to expose",
+          "installer_username": "Installer username (optional)",
+          "installer_password": "Installer password (optional)"
         }
       }
     },
@@ -59,7 +61,9 @@
           "arm_code": "Optional 4 digits arm code",
           "scan_interval": "Scan interval (seconds)",
           "image_server_url": "Local image server URL",
-          "image_count": "Number of recent photos to expose"
+          "image_count": "Number of recent photos to expose",
+          "installer_username": "Installer username (optional)",
+          "installer_password": "Installer password (optional)"
         }
       }
     },
@@ -217,6 +221,16 @@
     "image": {
       "recent_image": {
         "name": "Recent image {number}"
+      }
+    },
+    "switch": {
+      "element_active": {
+        "name": "{element} (PAUSE)"
+      }
+    },
+    "number": {
+      "refresh_interval": {
+        "name": "Refresh interval"
       }
     }
   }

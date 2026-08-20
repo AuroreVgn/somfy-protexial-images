@@ -9,6 +9,7 @@ class ProtexialIOApi(AbstractApi):
             Page.LOGOUT: "/logout.htm",
             Page.PILOTAGE: "/fr/u_pilotage.htm",
             Page.STATUS: "/status.xml",
+            Page.INSTALLER_ELEMENTS: "/fr/i_listelmt.htm",
             Page.CAMERA: "/fr/u_regcam.htm",
             Page.ERROR: "/fr/error.htm",
             Page.ELEMENTS: "/fr/u_plistelmt.htm",

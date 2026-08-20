@@ -9,6 +9,7 @@ class ProtexiomApi(AbstractApi):
             Page.LOGOUT: "/logout.htm",
             Page.PILOTAGE: "/u_pilotage.htm",
             Page.STATUS: "/status.xml",
+            Page.INSTALLER_ELEMENTS: "/i_listelmt.htm",
             Page.CAMERA: "/fr/u_regcam.htm",
             Page.ERROR: "/error.htm",
             Page.ELEMENTS: "/u_plistelmt.htm",

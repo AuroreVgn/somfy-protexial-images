@@ -18,10 +18,13 @@ CONF_NIGHT_ZONES = "night_zones"
 CONF_HOME_ZONES = "home_zones"
 CONF_IMAGE_SERVER_URL = "image_server_url"
 CONF_IMAGE_COUNT = "image_count"
+CONF_INSTALLER_USERNAME = "installer_username"
+CONF_INSTALLER_PASSWORD = "installer_password"
 
 API = "api"
 COORDINATOR = "coordinator"
 DEVICE_INFO = "device_info"
+REFRESH_ELEMENTS = "refresh_elements"
 
 CHALLENGE_REGEX = r"\b[A-F][1-5]\b"
 
@@ -76,6 +79,7 @@ class Page(str, Enum):
     PILOTAGE = "pilotage"
     STATUS = "status"
     CAMERA = "camera"
+    INSTALLER_ELEMENTS = "installer_elements"
     ERROR = "error"
     ELEMENTS = "elements"
     CHALLENGE_CARD = "challenge_card"

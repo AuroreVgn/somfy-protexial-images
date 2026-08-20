@@ -38,7 +38,9 @@
           "arm_code": "Optionele 4-cijferige inschakelcode",
           "scan_interval": "Vernieuwingsinterval in seconden — 0 schakelt automatische vernieuwing uit",
           "image_server_url": "URL van lokale afbeeldingsserver",
-          "image_count": "Aantal recente foto’s om weer te geven"
+          "image_count": "Aantal recente foto’s om weer te geven",
+          "installer_username": "Gebruikersnaam installateur (optioneel)",
+          "installer_password": "Wachtwoord installateur (optioneel)"
         }
       }
     },
@@ -59,7 +61,9 @@
           "arm_code": "Optionele 4-cijferige inschakelcode",
           "scan_interval": "Scaninterval (seconden)",
           "image_server_url": "URL van lokale afbeeldingsserver",
-          "image_count": "Aantal recente foto’s om weer te geven"
+          "image_count": "Aantal recente foto’s om weer te geven",
+          "installer_username": "Gebruikersnaam installateur (optioneel)",
+          "installer_password": "Wachtwoord installateur (optioneel)"
         }
       }
     },
@@ -217,6 +221,16 @@
     "image": {
       "recent_image": {
         "name": "Recente afbeelding {number}"
+      }
+    },
+    "switch": {
+      "element_active": {
+        "name": "{element} (PAUZE)"
+      }
+    },
+    "number": {
+      "refresh_interval": {
+        "name": "Vernieuwingsinterval"
       }
     }
   }

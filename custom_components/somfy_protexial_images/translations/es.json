@@ -38,7 +38,9 @@
           "arm_code": "Código de armado opcional de 4 dígitos",
           "scan_interval": "Intervalo de actualización en segundos — 0 desactiva la actualización automática",
           "image_server_url": "URL del servidor local de imágenes",
-          "image_count": "Número de fotos recientes que se mostrarán"
+          "image_count": "Número de fotos recientes que se mostrarán",
+          "installer_username": "Nombre de usuario del instalador (opcional)",
+          "installer_password": "Contraseña del instalador (opcional)"
         }
       }
     },
@@ -59,7 +61,9 @@
           "arm_code": "Código de armado opcional de 4 dígitos",
           "scan_interval": "Intervalo de consulta (segundos)",
           "image_server_url": "URL del servidor local de imágenes",
-          "image_count": "Número de fotos recientes que se mostrarán"
+          "image_count": "Número de fotos recientes que se mostrarán",
+          "installer_username": "Nombre de usuario del instalador (opcional)",
+          "installer_password": "Contraseña del instalador (opcional)"
         }
       }
     },
@@ -217,6 +221,16 @@
     "image": {
       "recent_image": {
         "name": "Imagen reciente {number}"
+      }
+    },
+    "switch": {
+      "element_active": {
+        "name": "{element} (PAUSA)"
+      }
+    },
+    "number": {
+      "refresh_interval": {
+        "name": "Intervalo de actualización"
       }
     }
   }

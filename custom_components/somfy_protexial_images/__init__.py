@@ -30,10 +30,13 @@ from .const import (
     CONF_HOME_ZONES,
     CONF_IMAGE_COUNT,
     CONF_IMAGE_SERVER_URL,
+    CONF_INSTALLER_PASSWORD,
+    CONF_INSTALLER_USERNAME,
     CONF_MODES,
     CONF_NIGHT_ZONES,
     COORDINATOR,
     DEVICE_INFO,
+    REFRESH_ELEMENTS,
     DOMAIN,
     ApiType,
     Zone,
@@ -51,7 +54,9 @@ PLATFORMS = [
     Platform.COVER,
     Platform.LIGHT,
     Platform.IMAGE,
+    Platform.NUMBER,  # Runtime/restorable automatic refresh interval
     Platform.SENSOR,  # Added SENSOR platform for GSM Provider and GSM Signal Strength
+    Platform.SWITCH,  # Per-element active/paused control
 ]
 
 
@@ -72,6 +77,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         username=entry.data.get(CONF_USERNAME),
         password=entry.data.get(CONF_PASSWORD),
         codes=entry.data.get(CONF_CODES),
+        installer_username=entry.data.get(CONF_INSTALLER_USERNAME),
+        installer_password=entry.data.get(CONF_INSTALLER_PASSWORD),
     )
 
     await protexial.init()
@@ -90,6 +97,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data.get(CONF_IMAGE_SERVER_URL, "") or ""
     ).strip().rstrip("/")
     image_count = int(entry.data.get(CONF_IMAGE_COUNT, 5))
+
+    async def _refresh_elements():
+        """Refresh and update the shared elements cache."""
+        nonlocal last_elements
+        last_elements = await protexial.get_elements()
+        return last_elements
 
     async def _get_status():
         nonlocal last_status, last_elements, last_images
@@ -138,7 +151,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if status_changed:
                     _LOGGER.info("Status changed: %s - old: %s", current_status, last_status)
                 last_status = current_status
-                last_elements = await protexial.get_elements()
+                await _refresh_elements()
 
             # Read the image transmitter link directly from u_regcam.htm.
             # This is the state represented by Somfy's "Liaison transmetteur"
@@ -313,6 +326,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         API: protexial,
         COORDINATOR: coordinator,
         DEVICE_INFO: device_info,
+        REFRESH_ELEMENTS: _refresh_elements,
     }
 
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
