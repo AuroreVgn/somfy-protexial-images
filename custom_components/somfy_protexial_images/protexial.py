@@ -925,27 +925,16 @@ class SomfyProtexial:
                     password=self.installer_password,
                 )
 
-                # Older Protexiom 2008 (PROTEXIOM_ALT) firmwares use the
-                # same toggle action but without the "_2" suffix used by
-                # newer Protexial firmwares.
-                if self.api_type == ApiType.PROTEXIOM_ALT:
-                    form = {
-                        "elt_preload": str(element_id),
-                        "toggle": "",
-                        "apply": "",
-                    }
-                else:
-                    form = {
-                        "elt_preload_2": str(element_id),
-                        "toggle": "",
-                        "apply_2": "",
-                    }
                 # Installer page location differs between firmware families:
                 # newer/french-localized centrales use /fr/i_listelmt.htm while
-                # older ones commonly use /i_listelmt.htm. Try the API-specific
-                # path first and fall back ONLY on HTTP 404. Falling back after
-                # any other error would be unsafe because the first POST might
-                # already have toggled the element.
+                # older ones commonly use /i_listelmt.htm.
+                #
+                # Known form variants:
+                #   /fr/i_listelmt.htm -> elt_preload_2 / apply_2
+                #   /i_listelmt.htm    -> elt_preload   / apply
+                #
+                # Do not rely on api_type alone: some old Protexiom centrales
+                # can be detected as PROTEXIOM rather than PROTEXIOM_ALT.
                 primary = self.api.get_page(Page.INSTALLER_ELEMENTS)
                 alternate = (
                     "/i_listelmt.htm"
@@ -960,6 +949,82 @@ class SomfyProtexial:
                 response = None
                 last_exception = None
                 for index, candidate in enumerate(candidates):
+                    # Select a safe default payload from the URL ACTUALLY used.
+                    # This is important when the first URL 404s and we fall back
+                    # to the other firmware variant.
+                    use_legacy_form = candidate == "/i_listelmt.htm"
+
+                    # Extra safety: inspect the installer page before the
+                    # state-changing POST and detect the actual field names.
+                    try:
+                        inspect_response = await self.__do_call(
+                            "get",
+                            candidate,
+                            retry=False,
+                            login=False,
+                        )
+                        inspect_html = await inspect_response.text(
+                            self.api.get_encoding()
+                        )
+
+                        has_legacy_fields = bool(
+                            re.search(
+                                r'name=["\']elt_preload["\']',
+                                inspect_html,
+                                re.IGNORECASE,
+                            )
+                            and re.search(
+                                r'name=["\']apply["\']',
+                                inspect_html,
+                                re.IGNORECASE,
+                            )
+                        )
+                        has_new_fields = bool(
+                            re.search(
+                                r'name=["\']elt_preload_2["\']',
+                                inspect_html,
+                                re.IGNORECASE,
+                            )
+                            and re.search(
+                                r'name=["\']apply_2["\']',
+                                inspect_html,
+                                re.IGNORECASE,
+                            )
+                        )
+
+                        if has_legacy_fields:
+                            use_legacy_form = True
+                        elif has_new_fields:
+                            use_legacy_form = False
+
+                        _LOGGER.debug(
+                            "Somfy installer form detected on %s: %s",
+                            candidate,
+                            "legacy (elt_preload/apply)"
+                            if use_legacy_form
+                            else "new (elt_preload_2/apply_2)",
+                        )
+                    except SomfyException as inspect_ex:
+                        _LOGGER.debug(
+                            "Unable to inspect Somfy installer form on %s; "
+                            "using URL-based payload fallback: %s",
+                            candidate,
+                            inspect_ex,
+                        )
+
+                    if use_legacy_form:
+                        form = {
+                            "elt_preload": str(element_id),
+                            "toggle": "",
+                            "apply": "",
+                        }
+                    else:
+                        form = {
+                            "elt_preload_2": str(element_id),
+                            "toggle": "",
+                            "apply_2": "",
+                        }
+
                     try:
                         response = await self.__do_call(
                             "post",
@@ -1006,7 +1071,6 @@ class SomfyProtexial:
                 # Restore Home Assistant's normal user session. If this fails,
                 # propagate the error so HA reports the command as failed.
                 await self.__login()
-
 
     async def get_image_transmitter_status(self) -> dict:
         """Read the transmitter connection state from the image page.
