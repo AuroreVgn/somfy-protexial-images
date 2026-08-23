@@ -36,4 +36,4 @@ Modèle testé :
 >
 > 
 > Ne prends pas en compte les modifications complètes (lxml) de [cette issue](https://github.com/AuroreVgn/somfy-protexial/issues/12)
-> Ne prends pas en compte les corrections pour la Protexiom 2008 à partir de la 2.2.1-beta1
+> Ne prends pas en compte les corrections pour la Protexiom 2008 à partir de la 2.1.2-beta1
