@@ -1,8 +1,9 @@
 /* ========================================================
    Somfy Protexial / Protexiom Card
+   Dashboard > Ressources : /local/somfy-protexial-card-v3.1.7.js?v=317
    ======================================================== */
 
-const CARD_VERSION = "v3.1.2";
+const CARD_VERSION = "v3.1.7";
 
 const ALARM_FEATURES = {
   ARM_HOME: 1,
@@ -48,7 +49,7 @@ const TRANSLATIONS = {
     lastSync: "Dernière synchronisation", refresh: "Actualiser", refreshing: "Actualisation…", connected: "Centrale connectée",
     disconnected: "Centrale indisponible", codeTitle: "Code / PIN", codePlaceholder: "Saisir le code", cancel: "Annuler",
     validate: "Valider", confirm: "Confirmer", actionError: "Impossible d’exécuter l’action", clickDetails: "Cliquez pour les détails",
-    settingsDisplay: "Affichage avancé", imagesTitle: "Images", imageMonitoring: "Surveillance images", startImageMonitoring: "Démarrer", stopImageMonitoring: "Arrêter", imageStartEntity: "Bouton démarrer la surveillance images", imageStopEntity: "Bouton arrêter la surveillance images", galleryUrl: "URL de la galerie locale", localGallery: "Galerie locale", openGallery: "Ouvrir la galerie", clearPin: "Effacer", lastImageEvent: "Dernier événement", lastFtp: "Dernière réception FTP", localServer: "Serveur local", imageAge: "Âge dernière image", recentImages: "Images récentes"
+    settingsDisplay: "Affichage avancé", imagesTitle: "Images", imageMonitoring: "Surveillance images", startImageMonitoring: "Démarrer", stopImageMonitoring: "Arrêter", imageStartEntity: "Bouton démarrer la surveillance images", imageStopEntity: "Bouton arrêter la surveillance images", galleryUrl: "URL de la galerie locale", imageEntity1: "Image récente 1", imageEntity2: "Image récente 2", imageEntity3: "Image récente 3", imageEntity4: "Image récente 4", imageEntity5: "Image récente 5", localGallery: "Galerie locale", openGallery: "Ouvrir la galerie", clearPin: "Effacer", lastImageEvent: "Dernier événement", lastFtp: "Dernière réception FTP", localServer: "Serveur local", imageAge: "Âge dernière image", recentImages: "Images récentes"
   },
   en: {
     cardSettings: "Card settings", alarmEntity: "Alarm entity", cardTitle: "Card title", entity: "Entity",
@@ -67,7 +68,7 @@ const TRANSLATIONS = {
     resume: "Resume", lastSync: "Last synchronization", refresh: "Refresh", refreshing: "Refreshing…",
     connected: "Control panel connected", disconnected: "Control panel unavailable", codeTitle: "Code / PIN",
     codePlaceholder: "Enter code", cancel: "Cancel", validate: "Validate", confirm: "Confirm",
-    actionError: "Unable to execute action", clickDetails: "Click for details", settingsDisplay: "Advanced display", imagesTitle: "Images", imageMonitoring: "Image monitoring", startImageMonitoring: "Start", stopImageMonitoring: "Stop", imageStartEntity: "Start image monitoring button", imageStopEntity: "Stop image monitoring button", galleryUrl: "Local gallery URL", localGallery: "Local gallery", openGallery: "Open gallery", clearPin: "Clear", lastImageEvent: "Last event", lastFtp: "Last FTP reception", localServer: "Local server", imageAge: "Latest image age", recentImages: "Recent images"
+    actionError: "Unable to execute action", clickDetails: "Click for details", settingsDisplay: "Advanced display", imagesTitle: "Images", imageMonitoring: "Image monitoring", startImageMonitoring: "Start", stopImageMonitoring: "Stop", imageStartEntity: "Start image monitoring button", imageStopEntity: "Stop image monitoring button", galleryUrl: "Local gallery URL", imageEntity1: "Recent image 1", imageEntity2: "Recent image 2", imageEntity3: "Recent image 3", imageEntity4: "Recent image 4", imageEntity5: "Recent image 5", localGallery: "Local gallery", openGallery: "Open gallery", clearPin: "Clear", lastImageEvent: "Last event", lastFtp: "Last FTP reception", localServer: "Local server", imageAge: "Latest image age", recentImages: "Recent images"
   },
   de: {
     cardSettings:"Karteneinstellungen", alarmEntity:"Alarm-Entität", cardTitle:"Kartentitel", entity:"Entität", displayedName:"Angezeigter Name",
@@ -299,6 +300,11 @@ class SomfyProtexialCardEditor extends HTMLElement {
         { name: "refresh_entity", selector: { entity: { domain: "button" } } },
         { name: "image_start_entity", selector: { entity: { domain: "button" } } },
         { name: "image_stop_entity", selector: { entity: { domain: "button" } } },
+        { name: "image_entity_1", selector: { entity: { domain: "image" } } },
+        { name: "image_entity_2", selector: { entity: { domain: "image" } } },
+        { name: "image_entity_3", selector: { entity: { domain: "image" } } },
+        { name: "image_entity_4", selector: { entity: { domain: "image" } } },
+        { name: "image_entity_5", selector: { entity: { domain: "image" } } },
         { name: "gallery_url", selector: { text: { type: "url" } } },
       ];
       formAdvanced.data = {
@@ -306,6 +312,11 @@ class SomfyProtexialCardEditor extends HTMLElement {
         refresh_entity: cfg.refresh_entity || "",
         image_start_entity: cfg.image_start_entity || "",
         image_stop_entity: cfg.image_stop_entity || "",
+        image_entity_1: cfg.image_entity_1 || "",
+        image_entity_2: cfg.image_entity_2 || "",
+        image_entity_3: cfg.image_entity_3 || "",
+        image_entity_4: cfg.image_entity_4 || "",
+        image_entity_5: cfg.image_entity_5 || "",
         gallery_url: cfg.gallery_url || "",
       };
       formAdvanced.computeLabel = field => {
@@ -314,6 +325,11 @@ class SomfyProtexialCardEditor extends HTMLElement {
           refresh_entity: "refreshEntity",
           image_start_entity: "imageStartEntity",
           image_stop_entity: "imageStopEntity",
+          image_entity_1: "imageEntity1",
+          image_entity_2: "imageEntity2",
+          image_entity_3: "imageEntity3",
+          image_entity_4: "imageEntity4",
+          image_entity_5: "imageEntity5",
           gallery_url: "galleryUrl",
         };
         return tr(this._hass, labels[field.name] || field.name);
@@ -431,6 +447,11 @@ class SomfyProtexialCard extends HTMLElement {
       refresh_entity: config.refresh_entity || "",
       image_start_entity: config.image_start_entity || "",
       image_stop_entity: config.image_stop_entity || "",
+      image_entity_1: config.image_entity_1 || "",
+      image_entity_2: config.image_entity_2 || "",
+      image_entity_3: config.image_entity_3 || "",
+      image_entity_4: config.image_entity_4 || "",
+      image_entity_5: config.image_entity_5 || "",
       gallery_url: config.gallery_url || "",
       ...Object.fromEntries(RESET_DEF.map(reset => [reset.configKey, config[reset.configKey] || ""])),
       alarm_code: config.alarm_code,
@@ -452,14 +473,27 @@ class SomfyProtexialCard extends HTMLElement {
 
   _getState(entityId) { return entityId ? this._hass?.states?.[entityId] : undefined; }
 
-  _allSomfyEntities(domain) {
-    return Object.values(this._hass?.states || {}).filter(entity => {
-      const id = entity.entity_id.toLowerCase();
-      if (domain && !id.startsWith(`${domain}.`)) return false;
-      return id.includes("somfy_protexial") || id.includes("somfy_protexiom") ||
-        String(entity.attributes?.integration || "").toLowerCase().includes("somfy_protex");
-    });
-  }
+_allSomfyEntities(domain) {
+  return Object.values(this._hass?.states || {}).filter(entity => {
+    const id = entity.entity_id.toLowerCase();
+
+    if (domain && !id.startsWith(`${domain}.`)) {
+      return false;
+    }
+
+    const integration = String(
+      entity.attributes?.integration || ""
+    ).toLowerCase();
+
+    return (
+      id.includes("somfy_protexial") ||
+      id.includes("somfy_protexiom") ||
+      id.includes(".sofy_") ||
+      integration.includes("somfy_protex") ||
+      integration.includes("sofy")
+    );
+  });
+}
 
   _findByAliases(domain, aliases = []) {
     const entities = this._allSomfyEntities(domain);
@@ -499,9 +533,43 @@ class SomfyProtexialCard extends HTMLElement {
 
   _pauseSwitches() {
     if (!this.config.show_pauses) return [];
+
     return this._allSomfyEntities("switch").filter(entity => {
-      const haystack = `${entity.entity_id} ${entity.attributes?.friendly_name || ""}`.toLowerCase();
-      return haystack.includes("pause") || haystack.includes("(pause)") || haystack.includes("paused");
+      const attributes = entity.attributes || {};
+      const translationKey = String(attributes.translation_key || "").toLowerCase();
+
+      // Official marker used by the Somfy Protexial integration.
+      // ON = element active, OFF = element paused.
+      if (translationKey === "element_active") {
+        return true;
+      }
+
+      // Fallbacks for older/custom integration versions.
+      const haystack = [
+        entity.entity_id,
+        attributes.friendly_name,
+        translationKey,
+        attributes.device_class,
+        attributes.icon,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const tokens = [
+        "element_active",
+        "pause",
+        "paused",
+        "pausiert",
+        "pausa",
+        "pausado",
+        "pausada",
+        "in pausa",
+        "gepauzeerd",
+        "em pausa",
+      ];
+
+      return tokens.some(token => haystack.includes(token));
     });
   }
 
@@ -554,13 +622,35 @@ class SomfyProtexialCard extends HTMLElement {
     try { return this._hass.formatEntityState(entity); } catch (_) { return entity.state; }
   }
 
-  _formatName(entity, fallbackKey) {
-    if (entity) {
-      try { return this._hass.formatEntityName(entity); } catch (_) {}
-      if (entity.attributes?.friendly_name) return entity.attributes.friendly_name;
+_formatName(entity, fallbackKey) {
+  if (entity) {
+    let name = "";
+
+    try {
+      name = this._hass.formatEntityName(entity) || "";
+    } catch (_) {}
+
+    if (!name) {
+      name = entity.attributes?.friendly_name || "";
     }
-    return tr(this._hass, fallbackKey);
+
+    if (name) {
+      // Nettoyage des suffixes des switches de pause
+      if (entity.entity_id?.startsWith("switch.")) {
+        name = name
+          .replace(
+            /\s*\((?:pause|paused|pausiert|pausa|gepauzeerd|em pausa)\)\s*$/i,
+            ""
+          )
+          .trim();
+      }
+
+      return name;
+    }
   }
+
+  return tr(this._hass, fallbackKey);
+}
 
   _alarmValues() {
     const entity = this._getState(this.config.alarm_entity);
@@ -663,15 +753,39 @@ class SomfyProtexialCard extends HTMLElement {
 
   _imageEntities() {
     if (!this._hass) return [];
+
     return [1, 2, 3, 4, 5]
-      .map(n => this._hass.states[`image.somfy_protexial_image_recente_${n}`])
+      .map(n => {
+        const configured = this.config?.[`image_entity_${n}`];
+        if (configured && this._getState(configured)) {
+          return this._getState(configured);
+        }
+
+        const candidates = [
+          `image.sofy_recent_image_${n}`,
+          `image.somfy_protexial_image_recente_${n}`,
+          `image.somfy_protexiom_image_recente_${n}`,
+        ];
+
+        for (const entityId of candidates) {
+          const entity = this._getState(entityId);
+          if (entity) return entity;
+        }
+
+        return undefined;
+      })
       .filter(Boolean);
   }
 
   _hasImageSupport() {
-    return this._imageEntities().length > 0 ||
-      !!this._hass?.states["binary_sensor.somfy_protexial_surveillance_images"] ||
-      !!this._hass?.states["sensor.somfy_protexial_images_du_dernier_evenement"];
+    return (
+      this._imageEntities().length > 0 ||
+      !!this._getState("binary_sensor.sofy_image_surveillance") ||
+      !!this._getState("binary_sensor.somfy_protexial_surveillance_images") ||
+      !!this._findImageStartButton() ||
+      !!this._findImageStopButton() ||
+      !!this._findGalleryUrl()
+    );
   }
 
   _imageUrl(entity) {
@@ -689,7 +803,7 @@ class SomfyProtexialCard extends HTMLElement {
   }
 
   _formatImageAge() {
-    const entity = this._hass?.states["sensor.somfy_protexial_age_de_la_derniere_image"];
+    const entity = this._hass?.states["sensor.sofy_latest_image_age"];
     if (!entity || ["unknown", "unavailable"].includes(entity.state)) return null;
 
     const value = Number(entity.state);
@@ -732,10 +846,10 @@ class SomfyProtexialCard extends HTMLElement {
     ];
 
     const preferredIds = [
-      "sensor.somfy_protexial_images_du_dernier_evenement",
-      "sensor.somfy_protexial_dernier_evenement_image",
-      "binary_sensor.somfy_protexial_surveillance_images",
-      "binary_sensor.somfy_protexial_liaison_transmetteur_images",
+      "sensor.sofy_images_in_latest_event",
+      "sensor.sofy_latest_image_event",
+      "binary_sensor.sofy_image_surveillance",
+      "binary_sensor.sofy_image_transmitter_link",
     ];
 
     const candidates = [
@@ -779,7 +893,7 @@ class SomfyProtexialCard extends HTMLElement {
 
   _findImageStartButton() {
     if (this.config.image_start_entity) return this.config.image_start_entity;
-    const defaultEntity = "button.somfy_protexial_start_image_surveillance";
+    const defaultEntity = "button.sofy_start_image_surveillance";
     if (this._getState(defaultEntity)) return defaultEntity;
     if (!this.config.auto_detect) return "";
     return this._findByAliases("button", [
@@ -793,7 +907,7 @@ class SomfyProtexialCard extends HTMLElement {
 
   _findImageStopButton() {
     if (this.config.image_stop_entity) return this.config.image_stop_entity;
-    const defaultEntity = "button.somfy_protexial_stop_image_surveillance";
+    const defaultEntity = "button.sofy_stop_image_surveillance";
     if (this._getState(defaultEntity)) return defaultEntity;
     if (!this.config.auto_detect) return "";
     return this._findByAliases("button", [
@@ -814,7 +928,7 @@ class SomfyProtexialCard extends HTMLElement {
       return na - nb;
     });
 
-    const monitoring = this._hass.states["binary_sensor.somfy_protexial_surveillance_images"];
+    const monitoring = this._hass.states["binary_sensor.sofy_image_surveillance"];
     const monitoringOn = monitoring?.state === "on";
 
     const startEntityId = this._findImageStartButton();
@@ -827,7 +941,7 @@ class SomfyProtexialCard extends HTMLElement {
       {
         icon: "mdi:image-multiple-outline",
         label: tr(this._hass, "lastImageEvent"),
-        value: this._imageMeta("sensor.somfy_protexial_dernier_evenement_image"),
+        value: this._imageMeta("sensor.sofy_latest_image_event"),
       },
       {
         icon: "mdi:timer-sand",
@@ -837,12 +951,12 @@ class SomfyProtexialCard extends HTMLElement {
       {
         icon: "mdi:file-download-outline",
         label: tr(this._hass, "lastFtp"),
-        value: this._imageMeta("sensor.somfy_protexial_derniere_reception_ftp"),
+        value: this._imageMeta("sensor.sofy_last_ftp_reception"),
       },
       {
         icon: "mdi:web-check",
         label: tr(this._hass, "localServer"),
-        value: this._imageMeta("sensor.somfy_protexial_derniere_communication_serveur_local"),
+        value: this._imageMeta("sensor.sofy_last_local_server_communication"),
       },
     ].filter(item => item.value !== null);
 
@@ -920,6 +1034,12 @@ class SomfyProtexialCard extends HTMLElement {
     const resets = RESET_DEF.map(reset => ({ ...reset, entityId: this._resolveReset(reset) })).filter(reset => this._getState(reset.entityId));
     const faultEntities = this._faultEntities();
     const pauses = this._pauseSwitches();
+    console.debug("[Somfy Protexial Card] pause switches:", pauses.map(entity => ({
+      entity_id: entity.entity_id,
+      state: entity.state,
+      translation_key: entity.attributes?.translation_key,
+      name: entity.attributes?.friendly_name,
+    })));
     const refreshEntity = this._findRefresh();
     const lastSyncText = this._lastSyncText();
     const connectionOk = this._connectionOk();
@@ -1114,9 +1234,16 @@ class SomfyProtexialCard extends HTMLElement {
           <div class="reset-grid">${resets.map(reset => `<button class="btn reset-btn" data-reset-key="${reset.key}" data-entity-id="${reset.entityId}"><ha-icon icon="${reset.icon}"></ha-icon><span>${tr(this._hass, reset.text)}</span></button>`).join("")}</div>
         </div>` : ""}
 
-        ${typeof this._renderImageSection === "function"
-          ? this._renderImageSection()
-          : ""}
+        ${(() => {
+          try {
+            return typeof this._renderImageSection === "function"
+              ? this._renderImageSection()
+              : "";
+          } catch (error) {
+            console.error("Somfy Protexial Card image section failed", error);
+            return "";
+          }
+        })()}
         <div class="footer">
           <span></span>
           <span class="version">Somfy Protexial Card ${CARD_VERSION}</span>
