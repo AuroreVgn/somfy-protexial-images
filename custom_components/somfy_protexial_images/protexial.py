@@ -153,7 +153,17 @@ class SomfyProtexial:
         self.cookie = None
         self.api = self.load_api(self.api_type)
         self._last_elements_candidate = None
-        # Cache the working installer elements URL across toggle commands.
+        # Like Jeedom's phpProtexiom::detectHwVersion(), which probes the
+        # centrale's page layout only once (at eqLogic creation/save) and
+        # then always re-queries that exact same URL: once a candidate
+        # elements page has produced a fully valid parsed list, it is
+        # locked in via _elements_page_locked and every later poll goes
+        # straight to it - no more re-trying alternate page variants each
+        # time. See get_elements() below for why this matters.
+        self._elements_page_locked = False
+        # Installer elements page differs across firmware generations. Cache
+        # the first working variant so subsequent pause/reactivate commands do
+        # not retry a known-missing URL.
         self._installer_elements_candidate = None
         # Last successfully parsed elements list. Used as a fallback when a
         # poll returns an empty/garbled elements page (the same class of
@@ -614,15 +624,27 @@ class SomfyProtexial:
             self.cookie = None
 
     async def logout(self):
-        """Logout on a best-effort basis and always clear the local session."""
+        """Logout and clear session cookie."""
         async with self._session_lock:
-            try:
-                await self.__logout()
-            except SomfyException as ex:
-                _LOGGER.debug("Logout failed (ignored): %s", ex)
-                self.cookie = None
+            await self.__logout()
 
     async def get_status(self) -> Status:
+        """Fetch and parse status.xml (wrapped with the session-retry safety net).
+
+        Unlike get_elements() and the action commands (arm/disarm/cover/
+        light), this call used to go straight to __get_status() with no
+        retry: a single slow/timed-out response from the centrale (rare,
+        but observed - e.g. an occasional status.xml request taking longer
+        than HTTP_TIMEOUT) would propagate straight up to the
+        DataUpdateCoordinator as a failure, which Home Assistant surfaces
+        by marking every entity "unavailable" for one poll cycle before
+        the next scheduled attempt (typically) succeeds on its own.
+        Wrapping it in __with_session_retry() closes that gap: a timeout
+        or connection error now gets one immediate retry (with a forced
+        fresh login, Jeedom-style) before giving up, so an isolated slow
+        response is far more likely to be absorbed transparently instead
+        of flashing every Somfy entity unavailable.
+        """
         page_is_authenticated = self.api.is_page_authenticated(Page.STATUS)
         _LOGGER.debug(
             "AUTH CHECK: Page.STATUS=%s authenticated=%s",
@@ -634,7 +656,9 @@ class SomfyProtexial:
             page_is_authenticated,
         )
         async with self._session_lock:
-            return await self.__get_status(page_is_authenticated)
+            return await self.__with_session_retry(
+                self.__get_status, page_is_authenticated
+            )
 
     async def __with_session_retry(self, func, *args, **kwargs):
         """Last-resort safety net mirroring Jeedom's
@@ -664,7 +688,7 @@ class SomfyProtexial:
                 ex,
             )
             try:
-                await self.logout()
+                await self.__logout()
             except SomfyException as logout_ex:
                 _LOGGER.debug("Logout before retry failed (ignored): %s", logout_ex)
             self.cookie = None
@@ -735,7 +759,7 @@ class SomfyProtexial:
                 "forcing a fresh login and retrying once"
             )
             try:
-                await self.logout()
+                await self.__logout()
             except SomfyException as ex:
                 _LOGGER.debug("Logout before retry failed (ignored): %s", ex)
             self.cookie = None
@@ -892,7 +916,6 @@ class SomfyProtexial:
             form = self.api.get_reset_link_err_payload()
             await self.__erase_default(form)
 
-
     async def set_element_active(self, element_id: str, active: bool) -> None:
         """Temporarily use the installer account to toggle an element.
 
@@ -925,16 +948,27 @@ class SomfyProtexial:
                     password=self.installer_password,
                 )
 
+                # Older Protexiom 2008 (PROTEXIOM_ALT) firmwares use the
+                # same toggle action but without the "_2" suffix used by
+                # newer Protexial firmwares.
+                if self.api_type == ApiType.PROTEXIOM_ALT:
+                    form = {
+                        "elt_preload": str(element_id),
+                        "toggle": "",
+                        "apply": "",
+                    }
+                else:
+                    form = {
+                        "elt_preload_2": str(element_id),
+                        "toggle": "",
+                        "apply_2": "",
+                    }
                 # Installer page location differs between firmware families:
                 # newer/french-localized centrales use /fr/i_listelmt.htm while
-                # older ones commonly use /i_listelmt.htm.
-                #
-                # Known form variants:
-                #   /fr/i_listelmt.htm -> elt_preload_2 / apply_2
-                #   /i_listelmt.htm    -> elt_preload   / apply
-                #
-                # Do not rely on api_type alone: some old Protexiom centrales
-                # can be detected as PROTEXIOM rather than PROTEXIOM_ALT.
+                # older ones commonly use /i_listelmt.htm. Try the API-specific
+                # path first and fall back ONLY on HTTP 404. Falling back after
+                # any other error would be unsafe because the first POST might
+                # already have toggled the element.
                 primary = self.api.get_page(Page.INSTALLER_ELEMENTS)
                 alternate = (
                     "/i_listelmt.htm"
@@ -949,82 +983,6 @@ class SomfyProtexial:
                 response = None
                 last_exception = None
                 for index, candidate in enumerate(candidates):
-                    # Select a safe default payload from the URL ACTUALLY used.
-                    # This is important when the first URL 404s and we fall back
-                    # to the other firmware variant.
-                    use_legacy_form = candidate == "/i_listelmt.htm"
-
-                    # Extra safety: inspect the installer page before the
-                    # state-changing POST and detect the actual field names.
-                    try:
-                        inspect_response = await self.__do_call(
-                            "get",
-                            candidate,
-                            retry=False,
-                            login=False,
-                        )
-                        inspect_html = await inspect_response.text(
-                            self.api.get_encoding()
-                        )
-
-                        has_legacy_fields = bool(
-                            re.search(
-                                r'name=["\']elt_preload["\']',
-                                inspect_html,
-                                re.IGNORECASE,
-                            )
-                            and re.search(
-                                r'name=["\']apply["\']',
-                                inspect_html,
-                                re.IGNORECASE,
-                            )
-                        )
-                        has_new_fields = bool(
-                            re.search(
-                                r'name=["\']elt_preload_2["\']',
-                                inspect_html,
-                                re.IGNORECASE,
-                            )
-                            and re.search(
-                                r'name=["\']apply_2["\']',
-                                inspect_html,
-                                re.IGNORECASE,
-                            )
-                        )
-
-                        if has_legacy_fields:
-                            use_legacy_form = True
-                        elif has_new_fields:
-                            use_legacy_form = False
-
-                        _LOGGER.debug(
-                            "Somfy installer form detected on %s: %s",
-                            candidate,
-                            "legacy (elt_preload/apply)"
-                            if use_legacy_form
-                            else "new (elt_preload_2/apply_2)",
-                        )
-                    except SomfyException as inspect_ex:
-                        _LOGGER.debug(
-                            "Unable to inspect Somfy installer form on %s; "
-                            "using URL-based payload fallback: %s",
-                            candidate,
-                            inspect_ex,
-                        )
-
-                    if use_legacy_form:
-                        form = {
-                            "elt_preload": str(element_id),
-                            "toggle": "",
-                            "apply": "",
-                        }
-                    else:
-                        form = {
-                            "elt_preload_2": str(element_id),
-                            "toggle": "",
-                            "apply_2": "",
-                        }
-
                     try:
                         response = await self.__do_call(
                             "post",
@@ -1072,122 +1030,6 @@ class SomfyProtexial:
                 # propagate the error so HA reports the command as failed.
                 await self.__login()
 
-    async def get_image_transmitter_status(self) -> dict:
-        """Read the transmitter connection state from the image page.
-
-        The Somfy page renders the "Liaison transmetteur" icon through one of
-        these CSS classes:
-          - domisdns_status_com_0x00 -> communication OK
-          - domisdns_status_com_0x01/0x02/0x03 -> communication fault
-          - domisdns_status_com_off -> communication disabled/off
-
-        The exact page path depends on firmware, so use the API-specific path
-        first and then the two known variants.
-        """
-        candidates = []
-        configured = self.api.get_page(Page.CAMERA)
-        for candidate in (configured, "/fr/u_regcam.htm", "/u_regcam.htm"):
-            if candidate and candidate not in candidates:
-                candidates.append(candidate)
-
-        last_exception = None
-        for candidate in candidates:
-            try:
-                response = await self.__do_call("get", candidate)
-                html = await response.text(self.api.get_encoding())
-                dom = pq(html)
-
-                status_node = dom("td[class^='domisdns_status_com_']").eq(0)
-                css_class = status_node.attr("class") if status_node else None
-
-                match = re.search(
-                    r"domisdns_status_com_(off|0x0[0-3])",
-                    css_class or "",
-                    re.IGNORECASE,
-                )
-                if not match:
-                    _LOGGER.debug(
-                        "No transmitter status class found on image page %s",
-                        candidate,
-                    )
-                    continue
-
-                raw_status = match.group(1).lower()
-
-                # Keep the textual countdown as useful diagnostic metadata.
-                page_text = " ".join(dom.text().split())
-                next_update = None
-                countdown = re.search(
-                    r"(Prochaine\s+mise\s+.{0,3}\s*jour\s+dans\s+[^.]+?(?:min|minute|minutes|s|seconde|secondes))",
-                    page_text,
-                    re.IGNORECASE,
-                )
-                if countdown:
-                    next_update = countdown.group(1).strip()
-
-                return {
-                    "status": raw_status,
-                    "connected": raw_status == "0x00",
-                    "next_update": next_update,
-                    "source_page": candidate,
-                }
-            except SomfyException as ex:
-                last_exception = ex
-                _LOGGER.debug(
-                    "Unable to read image transmitter state from %s: %s",
-                    candidate,
-                    ex,
-                )
-
-        if last_exception is not None:
-            raise last_exception
-
-        return {
-            "status": None,
-            "connected": None,
-            "next_update": None,
-            "source_page": None,
-        }
-
-    async def __image_surveillance_command(self, form: dict):
-        """POST a surveillance command to the camera/images page.
-
-        Most centrales expose /fr/u_regcam.htm, while some older Protexiom
-        firmwares use /u_regcam.htm. Try the API-specific path first, then
-        both known variants.
-        """
-        candidates = []
-        configured = self.api.get_page(Page.CAMERA)
-        for candidate in (configured, "/fr/u_regcam.htm", "/u_regcam.htm"):
-            if candidate and candidate not in candidates:
-                candidates.append(candidate)
-
-        last_exception = None
-        for candidate in candidates:
-            try:
-                await self.__do_call("post", candidate, data=form)
-                return
-            except SomfyException as ex:
-                last_exception = ex
-                _LOGGER.debug(
-                    "Image surveillance command failed on %s: %s",
-                    candidate,
-                    ex,
-                )
-
-        if last_exception is not None:
-            raise last_exception
-
-    async def start_image_surveillance(self):
-        """Start image surveillance / patrol mode."""
-        form = self.api.get_start_image_surveillance_payload()
-        await self.__with_session_retry(self.__image_surveillance_command, form)
-
-    async def stop_image_surveillance(self):
-        """Stop image surveillance / patrol mode."""
-        form = self.api.get_stop_image_surveillance_payload()
-        await self.__with_session_retry(self.__image_surveillance_command, form)
-
     async def get_elements(self) -> list[dict]:
         """Fetch and parse the elements page (wrapped with the session-retry safety net)."""
         async with self._session_lock:
@@ -1195,23 +1037,34 @@ class SomfyProtexial:
 
     async def __get_elements(self) -> list[dict]:
         _LOGGER.debug("ENTER get_elements()")
-        """Fetch and parse the elements page, returning a normalized list of dicts."""
-        candidates = [
-            LIST_ELEMENTS,
-            LIST_ELEMENTS_ALT,
-            LIST_ELEMENTS_PRINT,
-            LIST_ELEMENTS_NOLANG,
-            LIST_ELEMENTS_ALT_NOLANG,
-        ]
+        """Fetch and parse the elements page, returning a normalized list of dicts.
 
-        if self._last_elements_candidate is not None:
+        Mirrors the Jeedom reference plugin (phpProtexiom::detectHwVersion()):
+        the page variant is detected only once, then every later poll goes
+        straight back to that same page - it is never re-guessed. This
+        matters because the previous behaviour (re-trying a priority-ordered
+        list of 5 page variants on every poll, remembering only the last one
+        that happened to answer) is what caused door/window sensors to flap:
+        LIST_ELEMENTS ("u_plistelmt.htm", a "print"-style page) was tried
+        first and doesn't reliably reflect the live state on this firmware,
+        and a single transient hiccup on the locked-in page was enough to
+        silently fall through to it, producing an alternating stale/live
+        read on the very next poll. Jeedom has always relied on
+        "u_listelmt.htm" (LIST_ELEMENTS_ALT here) instead, so that is now
+        tried first during detection too.
+        """
+        if self._elements_page_locked and self._last_elements_candidate is not None:
+            # Page variant already detected for this session: don't probe
+            # any alternate candidate, just like Jeedom never re-probes
+            # detectHwVersion() once HwVersion is set.
+            candidates = [self._last_elements_candidate]
+        else:
             candidates = [
-                self._last_elements_candidate,
-                *[
-                    candidate
-                    for candidate in candidates
-                    if candidate != self._last_elements_candidate
-                ],
+                LIST_ELEMENTS_ALT,
+                LIST_ELEMENTS_ALT_NOLANG,
+                LIST_ELEMENTS,
+                LIST_ELEMENTS_NOLANG,
+                LIST_ELEMENTS_PRINT,
             ]
 
         html = None
@@ -1245,17 +1098,19 @@ class SomfyProtexial:
             except Exception:
                 continue
 
-        if found_candidate is not None:
-            self._last_elements_candidate = found_candidate
-
         if html is None:
             # Known Somfy session bug (same class as the empty status.xml
             # case): no candidate page could be fetched/decoded at all.
             # Keep the previous known-good list instead of returning []
             # (which would make every door/window sensor report "closed").
+            # Note: when the page is already locked in, we do NOT fall back
+            # to a different page variant here - that fallback is exactly
+            # what used to cause the flapping. We just wait for the next
+            # poll and retry the same locked page.
             _LOGGER.warning(
-                "Empty elements page received (known Somfy session bug), "
-                "keeping the last known door/window states"
+                "%s elements page received (known Somfy session bug), "
+                "keeping the last known door/window states",
+                "Locked" if self._elements_page_locked else "Empty",
             )
             return self._last_good_elements
 
@@ -1294,8 +1149,11 @@ class SomfyProtexial:
         # door/window sensor's state.
         if n == 0 or (len(elt_porte) == 0 and self._last_good_elements):
             _LOGGER.warning(
-                "Empty/incomplete elements page received (known Somfy "
-                "session bug), keeping the last known door/window states"
+                "%s/incomplete elements page received (known Somfy "
+                "session bug), keeping the last known door/window states",
+                "Locked elements page returned empty"
+                if self._elements_page_locked
+                else "Empty",
             )
             return self._last_good_elements
 
@@ -1319,5 +1177,21 @@ class SomfyProtexial:
             elements.append(el)
 
         # _LOGGER.debug("Extracted elements (count=%d): %s", len(elements), elements[:3])
+
+        # This is a fully valid, successfully parsed read: lock this page
+        # variant in for the rest of the session (Jeedom-style one-shot
+        # detection) so future polls go straight to it instead of
+        # re-testing alternate candidates.
+        if found_candidate is not None:
+            if not self._elements_page_locked:
+                _LOGGER.info(
+                    "Elements page detected and locked in for this "
+                    "session: %s (won't be re-probed until the "
+                    "integration reloads/restarts)",
+                    found_candidate,
+                )
+            self._elements_page_locked = True
+            self._last_elements_candidate = found_candidate
+
         self._last_good_elements = elements
         return elements
