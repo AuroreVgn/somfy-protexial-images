@@ -2,7 +2,7 @@
    Somfy Protexial / Protexiom Card - Elements
    ======================================================== */
 
-const ELEMENTS_CARD_VERSION = "v2.1.2";
+const ELEMENTS_CARD_VERSION = "v2.1.3";
 
 const ELEMENTS_TRANSLATIONS = {
   fr: {
@@ -118,44 +118,85 @@ class SomfyProtexialElementsCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._entityRegistry = null;
-    this._registryLoading = false;
-    this._loadedDevice = null;
+    this._hass = null;
+    this._config = {};
+    this._built = false;
+    this._language = null;
   }
 
   set hass(hass) {
+    const newLanguage = elementsLanguage(hass);
+    const languageChanged =
+      this._language &&
+      this._language !== newLanguage;
+
     this._hass = hass;
+    this._language = newLanguage;
 
-    if (this.config?.device_id &&
-        this._loadedDevice !== this.config.device_id &&
-        !this._registryLoading) {
-      this._loadRegistry();
-      return;
+    // IMPORTANT:
+    // Build the form only once.
+    // Do not reassign form.hass on every Home Assistant update,
+    // because it can force the internal device selector to rerender
+    // while its menu is open.
+    if (!this._built || languageChanged) {
+      this._render();
     }
-
-    this._render();
   }
 
   setConfig(config) {
     this._config = { ...config };
-    this._render();
+
+    // Home Assistant calls setConfig whenever the editor value changes.
+    // Do not reassign form.data here: the ha-form already owns the
+    // current edited value. Reassigning data can recreate the selector.
+    if (!this._built) {
+      this._render();
+    }
   }
 
   _fire(config) {
     this._config = config;
     this.dispatchEvent(new CustomEvent("config-changed", {
-      detail: { config }, bubbles: true, composed: true
+      detail: { config },
+      bubbles: true,
+      composed: true
     }));
   }
 
+  _formData() {
+    return {
+      device_id: this._config.device_id || "",
+      title: this._config.title || "",
+      only_problems: this._config.only_problems === true,
+      show_entity_id: this._config.show_entity_id === true,
+      compact: this._config.compact === true,
+    };
+  }
 
   _render() {
-    if (!this._hass || !this._config) return;
-    const fr = spLang(this._hass) === "fr";
+    if (!this._hass) return;
 
-    this.shadowRoot.innerHTML = `<ha-form id="form"></ha-form>`;
+    this._built = true;
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display:block;
+        }
+
+        ha-form {
+          display:block;
+        }
+      </style>
+
+      <ha-form id="form"></ha-form>
+    `;
+
     const form = this.shadowRoot.getElementById("form");
+
+    // These are assigned only when the editor is built/rebuilt.
     form.hass = this._hass;
+
     form.schema = [
       { name: "device_id", selector: { device: {} } },
       { name: "title", selector: { text: {} } },
@@ -163,31 +204,31 @@ class SomfyProtexialElementsCardEditor extends HTMLElement {
       { name: "show_entity_id", selector: { boolean: {} } },
       { name: "compact", selector: { boolean: {} } },
     ];
-    form.data = {
-      device_id: this._config.device_id || "",
-      title: this._config.title || "",
-      only_problems: this._config.only_problems === true,
-      show_entity_id: this._config.show_entity_id === true,
-      compact: this._config.compact === true,
+
+    form.data = this._formData();
+
+    form.computeLabel = field => {
+      const labels = {
+        device_id: et(this._hass, "device"),
+        title: et(this._hass, "title"),
+        only_problems: et(this._hass, "onlyProblems"),
+        show_entity_id: et(this._hass, "showEntityId"),
+        compact: et(this._hass, "compact"),
+      };
+
+      return labels[field.name] || field.name;
     };
 
-    const labels = fr ? {
-      device_id: et(this._hass, "device"),
-      title: et(this._hass, "title"),
-      only_problems: et(this._hass, "onlyProblems"),
-      show_entity_id: et(this._hass, "showEntityId"),
-      compact: et(this._hass, "compact"),
-    } : {
-      device_id: et(this._hass, "device"),
-      title: et(this._hass, "title"),
-      only_problems: et(this._hass, "onlyProblems"),
-      show_entity_id: et(this._hass, "showEntityId"),
-      compact: et(this._hass, "compact"),
-    };
-    form.computeLabel = f => labels[f.name] || f.name;
-    form.addEventListener("value-changed", ev => {
-      ev.stopPropagation();
-      this._fire({ ...this._config, ...ev.detail.value });
+    form.addEventListener("value-changed", event => {
+      event.stopPropagation();
+
+      const values = event.detail?.value || {};
+      const newConfig = {
+        ...this._config,
+        ...values,
+      };
+
+      this._fire(newConfig);
     });
   }
 }
@@ -468,7 +509,7 @@ class SomfyProtexialElementsCard extends HTMLElement {
     // Remove integration prefixes that can differ between installations.
     objectId = objectId
       .replace(/^somfy_protexial_/, "")
-      .replace(/^somfy_protexiom_/, "")
+      .replace(/^somfy_protexiom_/, "");
 
     // Remove role suffixes.
     objectId = objectId
@@ -666,7 +707,7 @@ class SomfyProtexialElementsCard extends HTMLElement {
     const elements = this._elements();
 
     if (this.config.device_id && !this._registryLoading) {
-      console.debug("[Somfy Protexial Elements Card v1.4.8]", {
+      console.debug(`[Somfy Protexial Elements Card ${ELEMENTS_CARD_VERSION}]`, {
         device_id: this.config.device_id,
         registry_device_entities: this._deviceEntityIds(),
         detected_elements: elements.map(e => e.entity_id),
