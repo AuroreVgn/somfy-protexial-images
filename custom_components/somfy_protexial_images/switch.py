@@ -107,7 +107,7 @@ async def async_setup_entry(
                 SomfyGeneralSettingSwitch(
                     api, device_info, config_entry.entry_id,
                     field="kiela",
-                    name="DING DONG sur sirène intérieure",
+                    translation_key="indoor_siren_ding_dong",
                     icon="mdi:bell-ring-outline",
                     initial_value=settings.get("kiela") == "mode",
                 )
@@ -117,7 +117,7 @@ async def async_setup_entry(
                 SomfyGeneralSettingSwitch(
                     api, device_info, config_entry.entry_id,
                     field="bipontransmiter",
-                    name="Bip sonore sur le transmetteur",
+                    translation_key="transmitter_beep",
                     icon="mdi:volume-medium",
                     initial_value=settings.get("bipontransmiter") == "mode",
                 )
@@ -147,10 +147,19 @@ class SomfyGeneralSettingSwitch(SwitchEntity):
     _attr_entity_category = EntityCategory.CONFIG
     _attr_should_poll = False
 
-    def __init__(self, api, device_info, entry_id: str, field: str, name: str, icon: str, initial_value: bool) -> None:
+    def __init__(
+        self,
+        api,
+        device_info,
+        entry_id: str,
+        field: str,
+        translation_key: str,
+        icon: str,
+        initial_value: bool,
+    ) -> None:
         self._api = api
         self._field = field
-        self._attr_name = name
+        self._attr_translation_key = translation_key
         self._attr_icon = icon
         self._attr_is_on = initial_value
         self._attr_unique_id = f"{entry_id}_general_{field}"

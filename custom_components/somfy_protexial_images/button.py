@@ -97,6 +97,7 @@ class ProtexialReadDateTimeButton(ButtonEntity):
     """Read and expose the date/time currently stored in the centrale."""
 
     _attr_has_entity_name = True
+    _attr_translation_key = "read_centrale_datetime"
     _attr_icon = "mdi:clipboard-text-clock"
     _attr_entity_category = EntityCategory.CONFIG
 
@@ -159,6 +160,7 @@ class ProtexialSyncTimeButton(ButtonEntity):
     """Synchronize the centrale date/time with Home Assistant local time."""
 
     _attr_has_entity_name = True
+    _attr_translation_key = "sync_centrale_datetime"
     _attr_entity_category = EntityCategory.CONFIG
 
     entity_description = ButtonEntityDescription(
