@@ -98,6 +98,35 @@ async def async_setup_entry(
         return
 
     switches = []
+
+    # Load i_reggen.htm once. Other installer-setting platforms reuse the API cache.
+    try:
+        settings = await api.get_general_settings()
+        if api.general_setting_supported("kiela"):
+            switches.append(
+                SomfyGeneralSettingSwitch(
+                    api, device_info, config_entry.entry_id,
+                    field="kiela",
+                    name="DING DONG sur sirène intérieure",
+                    icon="mdi:bell-ring-outline",
+                    initial_value=settings.get("kiela") == "mode",
+                )
+            )
+        if api.general_setting_supported("bipontransmiter"):
+            switches.append(
+                SomfyGeneralSettingSwitch(
+                    api, device_info, config_entry.entry_id,
+                    field="bipontransmiter",
+                    name="Bip sonore sur le transmetteur",
+                    icon="mdi:volume-medium",
+                    initial_value=settings.get("bipontransmiter") == "mode",
+                )
+            )
+    except SomfyException as ex:
+        # Do not lose the PAUSE feature merely because i_reggen.htm is absent
+        # or different on a given firmware generation.
+        _LOGGER.warning("Unable to load Somfy installer general settings: %s", ex)
+
     for element in (coordinator.data or {}).get("elements", []):
         if _pause_state(element) is None:
             continue
@@ -108,6 +137,37 @@ async def async_setup_entry(
         )
 
     async_add_entities(switches)
+
+
+
+class SomfyGeneralSettingSwitch(SwitchEntity):
+    """Boolean setting stored in the installer i_reggen form."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_should_poll = False
+
+    def __init__(self, api, device_info, entry_id: str, field: str, name: str, icon: str, initial_value: bool) -> None:
+        self._api = api
+        self._field = field
+        self._attr_name = name
+        self._attr_icon = icon
+        self._attr_is_on = initial_value
+        self._attr_unique_id = f"{entry_id}_general_{field}"
+        self._attr_device_info = device_info
+
+    async def _set_value(self, enabled: bool) -> None:
+        # Checked checkboxes are posted as "mode". Unchecked ones are omitted.
+        await self._api.update_general_settings({self._field: "mode" if enabled else None})
+        self._attr_is_on = enabled
+        self.async_write_ha_state()
+
+    async def async_turn_on(self, **kwargs) -> None:
+        await self._set_value(True)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        await self._set_value(False)
+
 
 
 class SomfyElementActiveSwitch(CoordinatorEntity, SwitchEntity):

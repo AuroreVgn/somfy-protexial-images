@@ -120,6 +120,9 @@
       },
       "last_local_communication": {
         "name": "Dernière communication serveur local"
+      },
+      "centrale_datetime": {
+        "name": "Date et heure de la centrale"
       }
     },
     "alarm_control_panel": {
@@ -145,6 +148,12 @@
       },
       "stop_image_surveillance": {
         "name": "Arrêter la surveillance images"
+      },
+      "read_centrale_datetime": {
+        "name": "Lire la date et l'heure de la centrale"
+      },
+      "sync_centrale_datetime": {
+        "name": "Synchroniser la date et l'heure"
       }
     },
     "binary_sensor": {

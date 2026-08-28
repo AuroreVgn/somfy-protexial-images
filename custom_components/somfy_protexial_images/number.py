@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import logging
 
-from homeassistant.components.number import NumberMode, RestoreNumber
+from homeassistant.components.number import NumberEntity, NumberMode, RestoreNumber
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL, EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import COORDINATOR, DEVICE_INFO, DOMAIN
+from .const import API, COORDINATOR, DEVICE_INFO, DOMAIN
+from .somfy_exception import SomfyException
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -21,15 +25,32 @@ async def async_setup_entry(
 ) -> None:
     """Set up the refresh interval number entity."""
     data = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        [
-            SomfyRefreshIntervalNumber(
-                coordinator=data[COORDINATOR],
-                entry=entry,
-                device_info=data[DEVICE_INFO],
-            )
-        ]
-    )
+    api = data[API]
+    entities: list[NumberEntity] = [
+        SomfyRefreshIntervalNumber(
+            coordinator=data[COORDINATOR],
+            entry=entry,
+            device_info=data[DEVICE_INFO],
+        )
+    ]
+
+    if api.installer_username and api.installer_password:
+        try:
+            settings = await api.get_general_settings()
+            if api.general_setting_supported("tempoentree"):
+                entities.append(
+                    SomfyEntryDelayNumber(
+                        api=api,
+                        device_info=data[DEVICE_INFO],
+                        entry_id=entry.entry_id,
+                        initial_value=settings.get("tempoentree", "30"),
+                    )
+                )
+        except SomfyException as ex:
+            _LOGGER.warning("Unable to load Somfy entry delay setting: %s", ex)
+
+    async_add_entities(entities)
+
 
 
 class SomfyRefreshIntervalNumber(RestoreNumber):
@@ -93,3 +114,36 @@ class SomfyRefreshIntervalNumber(RestoreNumber):
         # making an additional request to the alarm panel.
         if self._coordinator.data is not None:
             self._coordinator.async_set_updated_data(self._coordinator.data)
+
+
+class SomfyEntryDelayNumber(NumberEntity):
+    """Installer entry delay (tempoentree) in seconds."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Temporisation d'entrée"
+    _attr_icon = "mdi:timer-lock-outline"
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_native_min_value = 1
+    _attr_native_max_value = 60
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_mode = NumberMode.BOX
+    _attr_should_poll = False
+
+    def __init__(self, api, device_info, entry_id: str, initial_value: str) -> None:
+        self._api = api
+        self._attr_unique_id = f"{entry_id}_general_tempoentree"
+        self._attr_device_info = device_info
+        try:
+            self._attr_native_value = int(initial_value)
+        except (TypeError, ValueError):
+            self._attr_native_value = 30
+
+    async def async_set_native_value(self, value: float) -> None:
+        delay = int(value)
+        if delay < 1 or delay > 60:
+            raise ValueError("Entry delay must be between 1 and 60 seconds")
+        await self._api.update_general_settings({"tempoentree": str(delay)})
+        self._attr_native_value = delay
+        self.async_write_ha_state()
+

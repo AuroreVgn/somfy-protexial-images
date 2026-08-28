@@ -164,6 +164,11 @@ class SomfyProtexial:
         # the first working variant so subsequent pause/reactivate commands do
         # not retry a known-missing URL.
         self._installer_elements_candidate = None
+        # General installer settings page also differs across firmware families.
+        # Cache the first working variant for i_reggen read/write operations.
+        self._installer_general_candidate = None
+        self._general_settings_cache: dict[str, str] | None = None
+        self._general_settings_available_fields: set[str] = set()
         # Last successfully parsed elements list. Used as a fallback when a
         # poll returns an empty/garbled elements page (the same class of
         # Somfy session bug already worked around for status.xml), so a
@@ -914,6 +919,360 @@ class SomfyProtexial:
         async with self._session_lock:
             form = self.api.get_reset_link_err_payload()
             await self.__erase_default(form)
+
+    async def get_image_transmitter_status(self) -> dict:
+        """Read the transmitter connection state from the image page.
+
+        The Somfy page renders the "Liaison transmetteur" icon through one of
+        these CSS classes:
+          - domisdns_status_com_0x00 -> communication OK
+          - domisdns_status_com_0x01/0x02/0x03 -> communication fault
+          - domisdns_status_com_off -> communication disabled/off
+
+        The exact page path depends on firmware, so use the API-specific path
+        first and then the two known variants.
+        """
+        candidates = []
+        configured = self.api.get_page(Page.CAMERA)
+        for candidate in (configured, "/fr/u_regcam.htm", "/u_regcam.htm"):
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+
+        last_exception = None
+        for candidate in candidates:
+            try:
+                response = await self.__do_call("get", candidate)
+                html = await response.text(self.api.get_encoding())
+                dom = pq(html)
+
+                status_node = dom("td[class^='domisdns_status_com_']").eq(0)
+                css_class = status_node.attr("class") if status_node else None
+
+                match = re.search(
+                    r"domisdns_status_com_(off|0x0[0-3])",
+                    css_class or "",
+                    re.IGNORECASE,
+                )
+                if not match:
+                    _LOGGER.debug(
+                        "No transmitter status class found on image page %s",
+                        candidate,
+                    )
+                    continue
+
+                raw_status = match.group(1).lower()
+
+                # Keep the textual countdown as useful diagnostic metadata.
+                page_text = " ".join(dom.text().split())
+                next_update = None
+                countdown = re.search(
+                    r"(Prochaine\s+mise\s+.{0,3}\s*jour\s+dans\s+[^.]+?(?:min|minute|minutes|s|seconde|secondes))",
+                    page_text,
+                    re.IGNORECASE,
+                )
+                if countdown:
+                    next_update = countdown.group(1).strip()
+
+                return {
+                    "status": raw_status,
+                    "connected": raw_status == "0x00",
+                    "next_update": next_update,
+                    "source_page": candidate,
+                }
+            except SomfyException as ex:
+                last_exception = ex
+                _LOGGER.debug(
+                    "Unable to read image transmitter state from %s: %s",
+                    candidate,
+                    ex,
+                )
+
+        if last_exception is not None:
+            raise last_exception
+
+        return {
+            "status": None,
+            "connected": None,
+            "next_update": None,
+            "source_page": None,
+        }
+
+
+    async def __image_surveillance_command(self, form: dict):
+        """POST a surveillance command to the camera/images page.
+
+        Most centrales expose /fr/u_regcam.htm, while some older Protexiom
+        firmwares use /u_regcam.htm. Try the API-specific path first, then
+        both known variants.
+        """
+        candidates = []
+        configured = self.api.get_page(Page.CAMERA)
+        for candidate in (configured, "/fr/u_regcam.htm", "/u_regcam.htm"):
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+
+        last_exception = None
+        for candidate in candidates:
+            try:
+                await self.__do_call("post", candidate, data=form)
+                return
+            except SomfyException as ex:
+                last_exception = ex
+                _LOGGER.debug(
+                    "Image surveillance command failed on %s: %s",
+                    candidate,
+                    ex,
+                )
+
+        if last_exception is not None:
+            raise last_exception
+
+
+    async def start_image_surveillance(self):
+        """Start image surveillance / patrol mode."""
+        form = self.api.get_start_image_surveillance_payload()
+        await self.__with_session_retry(self.__image_surveillance_command, form)
+
+
+    async def stop_image_surveillance(self):
+        """Stop image surveillance / patrol mode."""
+        form = self.api.get_stop_image_surveillance_payload()
+        await self.__with_session_retry(self.__image_surveillance_command, form)
+
+
+    def _parse_installer_general_form(self, page_html: str) -> tuple[dict[str, str], set[str]]:
+        """Parse the installer general-settings form using browser submission rules."""
+        dom = pq(page_html)
+        form_dom = dom('form[name="i_reggen"]')
+        if not form_dom:
+            raise SomfyException("Installer general settings form not found")
+
+        form: dict[str, str] = {}
+        available_fields: set[str] = set()
+
+        for input_el in form_dom("input").items():
+            name = input_el.attr("name")
+            if not name or input_el.attr("disabled") is not None:
+                continue
+            available_fields.add(name)
+            input_type = (input_el.attr("type") or "text").lower()
+            if input_type in ("checkbox", "radio"):
+                if input_el.attr("checked") is None:
+                    continue
+                form[name] = input_el.attr("value") or ""
+            elif input_type in ("button", "reset", "file", "image"):
+                continue
+            else:
+                form[name] = input_el.attr("value") or ""
+
+        for select_el in form_dom("select").items():
+            name = select_el.attr("name")
+            if not name or select_el.attr("disabled") is not None:
+                continue
+            available_fields.add(name)
+            options = list(select_el("option").items())
+            if not options:
+                continue
+            selected = next(
+                (option for option in options if option.attr("selected") is not None),
+                options[0],
+            )
+            form[name] = selected.attr("value") or selected.text() or ""
+
+        for textarea_el in form_dom("textarea").items():
+            name = textarea_el.attr("name")
+            if not name or textarea_el.attr("disabled") is not None:
+                continue
+            available_fields.add(name)
+            form[name] = textarea_el.text() or ""
+
+        if "btn_save" not in form:
+            raise SomfyException("Installer general settings form is incomplete: btn_save")
+
+        return form, available_fields
+
+
+    async def _installer_general_operation(
+        self, changes: dict[str, str | None] | None = None
+    ) -> dict[str, str]:
+        """Read or update installer general settings while preserving unrelated fields.
+
+        This method assumes the caller holds _session_lock. GET probing of the two
+        known URLs is safe; after a POST is attempted we never retry another URL,
+        because the centrale may already have applied the state-changing request.
+        """
+        if not self.installer_username or not self.installer_password:
+            raise SomfyException("Installer credentials are not configured")
+
+        try:
+            try:
+                await self.__logout()
+            except SomfyException as ex:
+                _LOGGER.debug("User logout before general settings access failed: %s", ex)
+                self.cookie = None
+
+            await self.__login(
+                username=self.installer_username,
+                password=self.installer_password,
+            )
+
+            candidates = ["/fr/i_reggen.htm", "/i_reggen.htm"]
+            if self._installer_general_candidate in candidates:
+                candidates.remove(self._installer_general_candidate)
+                candidates.insert(0, self._installer_general_candidate)
+
+            last_exception = None
+            for candidate in candidates:
+                post_attempted = False
+                try:
+                    response = await self.__do_call(
+                        "get", candidate, retry=False, login=False
+                    )
+                    if getattr(response.real_url, "path", "") == self.api.get_page(
+                        Page.DEFAULT
+                    ):
+                        raise SomfyException(
+                            "Installer general settings page redirected to the default page"
+                        )
+
+                    page_html = await response.text(self.api.get_encoding())
+                    try:
+                        form, available_fields = self._parse_installer_general_form(page_html)
+                    except SomfyException as ex:
+                        raise SomfyException(f"{ex} on {candidate}") from ex
+
+                    self._installer_general_candidate = candidate
+                    self._general_settings_cache = dict(form)
+                    self._general_settings_available_fields = set(available_fields)
+
+                    if changes is None:
+                        return dict(form)
+
+                    unknown = set(changes).difference(available_fields)
+                    if unknown:
+                        raise SomfyException(
+                            "Unsupported installer general setting(s): "
+                            + ", ".join(sorted(unknown))
+                        )
+
+                    # Apply only the explicitly requested fields. None means an
+                    # unchecked checkbox, i.e. omit the field from form submission.
+                    for key, value in changes.items():
+                        if value is None:
+                            form.pop(key, None)
+                        else:
+                            form[key] = str(value)
+
+                    _LOGGER.debug(
+                        "Posting Somfy installer general settings to %s; changed fields: %s",
+                        candidate,
+                        ", ".join(sorted(changes)),
+                    )
+                    post_attempted = True
+                    post_response = await self.__do_call(
+                        "post", candidate, data=form, retry=False, login=False
+                    )
+                    if getattr(post_response.real_url, "path", "") == self.api.get_page(
+                        Page.DEFAULT
+                    ):
+                        raise SomfyException(
+                            "General settings update was redirected to the default page"
+                        )
+
+                    self._general_settings_cache = dict(form)
+                    _LOGGER.info(
+                        "Somfy installer general settings updated successfully via %s: %s",
+                        candidate,
+                        ", ".join(sorted(changes)),
+                    )
+                    return dict(form)
+
+                except SomfyException as ex:
+                    last_exception = ex
+                    if post_attempted:
+                        raise
+                    if "Http error (404)" in str(ex) or "form not found" in str(ex):
+                        _LOGGER.debug(
+                            "Somfy installer general settings candidate %s unavailable: %s",
+                            candidate,
+                            ex,
+                        )
+                        continue
+                    raise
+
+            if last_exception is not None:
+                raise last_exception
+            raise SomfyException("Installer general settings page is unavailable")
+        finally:
+            try:
+                await self.__logout()
+            except SomfyException as ex:
+                _LOGGER.debug("Installer logout after general settings access failed: %s", ex)
+                self.cookie = None
+            await self.__login()
+
+
+    async def get_general_settings(self, force: bool = False) -> dict[str, str]:
+        """Return installer general settings, using a cache unless a forced read is requested."""
+        if not self.installer_username or not self.installer_password:
+            raise SomfyException("Installer credentials are not configured")
+        if self._general_settings_cache is not None and not force:
+            return dict(self._general_settings_cache)
+
+        async with self._session_lock:
+            if self._general_settings_cache is not None and not force:
+                return dict(self._general_settings_cache)
+            return await self._installer_general_operation()
+
+
+    def general_setting_supported(self, field: str) -> bool:
+        """Return whether the last parsed i_reggen form contains the requested field."""
+        return field in self._general_settings_available_fields
+
+
+    async def update_general_settings(
+        self, changes: dict[str, str | None]
+    ) -> dict[str, str]:
+        """Update selected installer settings while preserving every other form value."""
+        async with self._session_lock:
+            return await self._installer_general_operation(changes)
+
+
+    async def get_centrale_datetime(self) -> dict[str, str]:
+        """Read the date/time currently configured in the Somfy centrale."""
+        settings = await self.get_general_settings(force=True)
+        required = ("date_dd", "date_mm", "date_yy", "heure_hh", "heure_mm")
+        missing = [field for field in required if field not in settings]
+        if missing:
+            raise SomfyException(
+                "Installer general settings page does not expose date/time field(s): "
+                + ", ".join(missing)
+            )
+
+        return {field: str(settings[field]).strip() for field in required}
+
+
+    async def sync_centrale_date(self, current_datetime) -> None:
+        """Synchronize only the centrale date, preserving its current time."""
+        changes = {
+            "date_dd": f"{current_datetime.day:02d}",
+            "date_mm": f"{current_datetime.month:02d}",
+            "date_yy": str(current_datetime.year),
+        }
+        await self.update_general_settings(changes)
+
+
+    async def sync_centrale_datetime(self, current_datetime) -> None:
+        """Synchronize the centrale date/time with Home Assistant local time."""
+        changes = {
+            "date_dd": f"{current_datetime.day:02d}",
+            "date_mm": f"{current_datetime.month:02d}",
+            "date_yy": str(current_datetime.year),
+            "heure_hh": f"{current_datetime.hour:02d}",
+            "heure_mm": f"{current_datetime.minute:02d}",
+        }
+        await self.update_general_settings(changes)
+
 
     async def set_element_active(self, element_id: str, active: bool) -> None:
         """Temporarily use the installer account to toggle an element.

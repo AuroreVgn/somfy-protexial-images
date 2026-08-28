@@ -110,6 +110,9 @@
       },
       "last_local_communication": {
         "name": "Last local server communication"
+      },
+      "centrale_datetime": {
+        "name": "Control panel date and time"
       }
     },
     "alarm_control_panel": {
@@ -135,6 +138,12 @@
       },
       "stop_image_surveillance": {
         "name": "Stop image surveillance"
+      },
+      "read_centrale_datetime": {
+        "name": "Read control panel date and time"
+      },
+      "sync_centrale_datetime": {
+        "name": "Synchronize control panel date and time"
       }
     },
     "binary_sensor": {
