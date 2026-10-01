@@ -37,10 +37,11 @@
           "home_zones": "Arm home zone(s)",
           "arm_code": "Optional 4 digits arm code",
           "scan_interval": "Refresh interval in seconds — 0 disables automatic refresh",
-          "image_server_url": "Local image server URL",
-          "image_count": "Number of recent photos to expose",
           "installer_username": "Installer username (optional)",
-          "installer_password": "Installer password (optional)"
+          "installer_password": "Installer password (optional)",
+          "arm_code_required": "Require code for arming (disarming remains protected)",
+          "image_server_url": "Local image server URL",
+          "image_count": "Number of recent photos to expose"
         }
       }
     },
@@ -60,10 +61,11 @@
           "home_zones": "Arm home zone(s)",
           "arm_code": "Optional 4 digits arm code",
           "scan_interval": "Scan interval (seconds)",
-          "image_server_url": "Local image server URL",
-          "image_count": "Number of recent photos to expose",
           "installer_username": "Installer username (optional)",
-          "installer_password": "Installer password (optional)"
+          "installer_password": "Installer password (optional)",
+          "arm_code_required": "Require code for arming (disarming remains protected)",
+          "image_server_url": "Local image server URL",
+          "image_count": "Number of recent photos to expose"
         }
       }
     },
@@ -96,6 +98,12 @@
       "last_sync": {
         "name": "Last Sync"
       },
+      "centrale_datetime": {
+        "name": "Control panel date and time"
+      },
+      "event_journal": {
+        "name": "Event journal"
+      },
       "last_image_event": {
         "name": "Latest image event"
       },
@@ -110,9 +118,6 @@
       },
       "last_local_communication": {
         "name": "Last local server communication"
-      },
-      "centrale_datetime": {
-        "name": "Control panel date and time"
       }
     },
     "alarm_control_panel": {
@@ -133,17 +138,17 @@
       "reset_link_err": {
         "name": "Reset Radio Link Error"
       },
-      "start_image_surveillance": {
-        "name": "Start image surveillance"
-      },
-      "stop_image_surveillance": {
-        "name": "Stop image surveillance"
-      },
       "read_centrale_datetime": {
         "name": "Read control panel date and time"
       },
       "sync_centrale_datetime": {
         "name": "Synchronize control panel date and time"
+      },
+      "start_image_surveillance": {
+        "name": "Start image surveillance"
+      },
+      "stop_image_surveillance": {
+        "name": "Stop image surveillance"
       }
     },
     "binary_sensor": {
@@ -227,11 +232,6 @@
         "name": "Lights"
       }
     },
-    "image": {
-      "recent_image": {
-        "name": "Recent image {number}"
-      }
-    },
     "switch": {
       "element_active": {
         "name": "{element} (PAUSE)"
@@ -249,6 +249,11 @@
       },
       "entry_delay": {
         "name": "Entry delay"
+      }
+    },
+    "image": {
+      "recent_image": {
+        "name": "Recent image {number}"
       }
     },
     "select": {

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import re
 import string
@@ -160,12 +161,16 @@ class SomfyProtexial:
         # straight to it - no more re-trying alternate page variants each
         # time. See get_elements() below for why this matters.
         self._elements_page_locked = False
+
+        # Event journal: remember the working URL after the first successful GET.
+        # Some firmwares expose /fr/journal.htm, older ones /journal.htm.
+        self._journal_page: str | None = None
         # Installer elements page differs across firmware generations. Cache
         # the first working variant so subsequent pause/reactivate commands do
         # not retry a known-missing URL.
         self._installer_elements_candidate = None
         # General installer settings page also differs across firmware families.
-        # Cache the first working variant for i_reggen read/write operations.
+        # Cache the first working variant for the time synchronization button.
         self._installer_general_candidate = None
         self._general_settings_cache: dict[str, str] | None = None
         self._general_settings_available_fields: set[str] = set()
@@ -280,8 +285,9 @@ class SomfyProtexial:
                             login=False,
                             authenticated=False,
                         )
-                        _LOGGER.error(
-                            "Somfy ERROR received for request: %s %s (code=%s)",
+                        _LOGGER.warning(
+                            "Somfy session already open for request: %s %s (code=%s); "
+                            "session reset and request retry in progress",
                             method,
                             full_path,
                             code,
@@ -320,8 +326,13 @@ class SomfyProtexial:
                     SomfyError.WRONG_CODE_ALT,
                 ):
                     raise SomfyException("Login failed: Wrong code")
-                if code == SomfyError.UNKNOWN_PARAMETER:
+                if code in (
+                    SomfyError.UNKNOWN_PARAMETER,
+                    SomfyError.UNKNOWN_PARAMETER_ALT,
+                ):
                     raise SomfyException("Command failed: Unknown parameter")
+                if code == SomfyError.BAD_PARAMETER:
+                    raise SomfyException("Command failed: Bad parameter (0x0800)")
 
                 if code == SomfyError.UNEXPECTED_ERROR:
                     raise SomfyException("Unexpected centrale error")
@@ -920,6 +931,57 @@ class SomfyProtexial:
             form = self.api.get_reset_link_err_payload()
             await self.__erase_default(form)
 
+    def _parse_installer_general_form(self, page_html: str) -> tuple[dict[str, str], set[str]]:
+        """Parse the installer general-settings form using browser submission rules."""
+        dom = pq(page_html)
+        form_dom = dom('form[name="i_reggen"]')
+        if not form_dom:
+            raise SomfyException("Installer general settings form not found")
+
+        form: dict[str, str] = {}
+        available_fields: set[str] = set()
+
+        for input_el in form_dom("input").items():
+            name = input_el.attr("name")
+            if not name or input_el.attr("disabled") is not None:
+                continue
+            available_fields.add(name)
+            input_type = (input_el.attr("type") or "text").lower()
+            if input_type in ("checkbox", "radio"):
+                if input_el.attr("checked") is None:
+                    continue
+                form[name] = input_el.attr("value") or ""
+            elif input_type in ("button", "reset", "file", "image"):
+                continue
+            else:
+                form[name] = input_el.attr("value") or ""
+
+        for select_el in form_dom("select").items():
+            name = select_el.attr("name")
+            if not name or select_el.attr("disabled") is not None:
+                continue
+            available_fields.add(name)
+            options = list(select_el("option").items())
+            if not options:
+                continue
+            selected = next(
+                (option for option in options if option.attr("selected") is not None),
+                options[0],
+            )
+            form[name] = selected.attr("value") or selected.text() or ""
+
+        for textarea_el in form_dom("textarea").items():
+            name = textarea_el.attr("name")
+            if not name or textarea_el.attr("disabled") is not None:
+                continue
+            available_fields.add(name)
+            form[name] = textarea_el.text() or ""
+
+        if "btn_save" not in form:
+            raise SomfyException("Installer general settings form is incomplete: btn_save")
+
+        return form, available_fields
+
     async def get_image_transmitter_status(self) -> dict:
         """Read the transmitter connection state from the image page.
 
@@ -1092,6 +1154,7 @@ class SomfyProtexial:
         return form, available_fields
 
 
+
     async def _installer_general_operation(
         self, changes: dict[str, str | None] | None = None
     ) -> dict[str, str]:
@@ -1179,13 +1242,100 @@ class SomfyProtexial:
                             "General settings update was redirected to the default page"
                         )
 
-                    self._general_settings_cache = dict(form)
+                    # The auto-clock checkbox (update_time) shares this same full-page
+                    # form. Preserve its state explicitly and verify it after every
+                    # settings write: some centrale firmwares may accept the POST while
+                    # silently changing/losing that checkbox state.
+                    #
+                    # This remains deliberately conservative: the normal path still
+                    # performs a single state-changing POST. A corrective POST is made
+                    # only after a fresh GET has proved that update_time no longer
+                    # matches the state we just submitted, and it is sent only to the
+                    # already-confirmed URL (never to a fallback URL).
+                    expected_update_time_present = "update_time" in form
+                    expected_update_time_value = form.get("update_time", "")
+
+                    verify_response = await self.__do_call(
+                        "get", candidate, retry=False, login=False
+                    )
+                    if getattr(verify_response.real_url, "path", "") == self.api.get_page(
+                        Page.DEFAULT
+                    ):
+                        raise SomfyException(
+                            "General settings verification was redirected to the default page"
+                        )
+
+                    verify_html = await verify_response.text(self.api.get_encoding())
+                    verify_form, verify_available_fields = (
+                        self._parse_installer_general_form(verify_html)
+                    )
+                    actual_update_time_present = "update_time" in verify_form
+
+                    if (
+                        "update_time" in available_fields
+                        and actual_update_time_present != expected_update_time_present
+                    ):
+                        _LOGGER.warning(
+                            "Somfy general settings changed 'update_time' unexpectedly "
+                            "after saving; restoring the previous checkbox state"
+                        )
+
+                        # Rebuild from the freshly-read form so every unrelated field is
+                        # preserved exactly as the centrale currently exposes it.
+                        if expected_update_time_present:
+                            verify_form["update_time"] = expected_update_time_value
+                        else:
+                            verify_form.pop("update_time", None)
+
+                        await asyncio.sleep(1.5)
+                        restore_response = await self.__do_call(
+                            "post",
+                            candidate,
+                            data=verify_form,
+                            retry=False,
+                            login=False,
+                        )
+                        if getattr(restore_response.real_url, "path", "") == self.api.get_page(
+                            Page.DEFAULT
+                        ):
+                            raise SomfyException(
+                                "General settings auto-clock restoration was redirected "
+                                "to the default page"
+                            )
+
+                        # Verify the corrective save once. Do not loop or blindly retry
+                        # state-changing requests on this old embedded web server.
+                        final_response = await self.__do_call(
+                            "get", candidate, retry=False, login=False
+                        )
+                        final_html = await final_response.text(self.api.get_encoding())
+                        final_form, final_available_fields = (
+                            self._parse_installer_general_form(final_html)
+                        )
+                        if (
+                            "update_time" in final_available_fields
+                            and ("update_time" in final_form)
+                            != expected_update_time_present
+                        ):
+                            raise SomfyException(
+                                "General settings were updated, but the centrale did not "
+                                "preserve the 'update_time' state"
+                            )
+
+                        verify_form = final_form
+                        verify_available_fields = final_available_fields
+
+                    self._general_settings_cache = dict(verify_form)
+                    self._general_settings_available_fields = set(
+                        verify_available_fields
+                    )
                     _LOGGER.info(
-                        "Somfy installer general settings updated successfully via %s: %s",
+                        "Somfy installer general settings updated and verified "
+                        "successfully via %s: %s",
                         candidate,
                         ", ".join(sorted(changes)),
                     )
-                    return dict(form)
+                    return dict(verify_form)
 
                 except SomfyException as ex:
                     last_exception = ex
@@ -1211,7 +1361,6 @@ class SomfyProtexial:
                 self.cookie = None
             await self.__login()
 
-
     async def get_general_settings(self, force: bool = False) -> dict[str, str]:
         """Return installer general settings, using a cache unless a forced read is requested."""
         if not self.installer_username or not self.installer_password:
@@ -1224,11 +1373,9 @@ class SomfyProtexial:
                 return dict(self._general_settings_cache)
             return await self._installer_general_operation()
 
-
     def general_setting_supported(self, field: str) -> bool:
         """Return whether the last parsed i_reggen form contains the requested field."""
         return field in self._general_settings_available_fields
-
 
     async def update_general_settings(
         self, changes: dict[str, str | None]
@@ -1236,7 +1383,6 @@ class SomfyProtexial:
         """Update selected installer settings while preserving every other form value."""
         async with self._session_lock:
             return await self._installer_general_operation(changes)
-
 
     async def get_centrale_datetime(self) -> dict[str, str]:
         """Read the date/time currently configured in the Somfy centrale."""
@@ -1251,17 +1397,6 @@ class SomfyProtexial:
 
         return {field: str(settings[field]).strip() for field in required}
 
-
-    async def sync_centrale_date(self, current_datetime) -> None:
-        """Synchronize only the centrale date, preserving its current time."""
-        changes = {
-            "date_dd": f"{current_datetime.day:02d}",
-            "date_mm": f"{current_datetime.month:02d}",
-            "date_yy": str(current_datetime.year),
-        }
-        await self.update_general_settings(changes)
-
-
     async def sync_centrale_datetime(self, current_datetime) -> None:
         """Synchronize the centrale date/time with Home Assistant local time."""
         changes = {
@@ -1272,7 +1407,6 @@ class SomfyProtexial:
             "heure_mm": f"{current_datetime.minute:02d}",
         }
         await self.update_general_settings(changes)
-
 
     async def set_element_active(self, element_id: str, active: bool) -> None:
         """Temporarily use the installer account to toggle an element.
@@ -1306,27 +1440,16 @@ class SomfyProtexial:
                     password=self.installer_password,
                 )
 
-                # Older Protexiom 2008 (PROTEXIOM_ALT) firmwares use the
-                # same toggle action but without the "_2" suffix used by
-                # newer Protexial firmwares.
-                if self.api_type == ApiType.PROTEXIOM_ALT:
-                    form = {
-                        "elt_preload": str(element_id),
-                        "toggle": "",
-                        "apply": "",
-                    }
-                else:
-                    form = {
-                        "elt_preload_2": str(element_id),
-                        "toggle": "",
-                        "apply_2": "",
-                    }
                 # Installer page location differs between firmware families:
                 # newer/french-localized centrales use /fr/i_listelmt.htm while
-                # older ones commonly use /i_listelmt.htm. Try the API-specific
-                # path first and fall back ONLY on HTTP 404. Falling back after
-                # any other error would be unsafe because the first POST might
-                # already have toggled the element.
+                # older ones commonly use /i_listelmt.htm.
+                #
+                # Known form variants:
+                #   /fr/i_listelmt.htm -> elt_preload_2 / apply_2
+                #   /i_listelmt.htm    -> elt_preload   / apply
+                #
+                # Do not rely on api_type alone: some old Protexiom centrales
+                # can be detected as PROTEXIOM rather than PROTEXIOM_ALT.
                 primary = self.api.get_page(Page.INSTALLER_ELEMENTS)
                 alternate = (
                     "/i_listelmt.htm"
@@ -1341,6 +1464,82 @@ class SomfyProtexial:
                 response = None
                 last_exception = None
                 for index, candidate in enumerate(candidates):
+                    # Select a safe default payload from the URL ACTUALLY used.
+                    # This is important when the first URL 404s and we fall back
+                    # to the other firmware variant.
+                    use_legacy_form = candidate == "/i_listelmt.htm"
+
+                    # Extra safety: inspect the installer page before the
+                    # state-changing POST and detect the actual field names.
+                    try:
+                        inspect_response = await self.__do_call(
+                            "get",
+                            candidate,
+                            retry=False,
+                            login=False,
+                        )
+                        inspect_html = await inspect_response.text(
+                            self.api.get_encoding()
+                        )
+
+                        has_legacy_fields = bool(
+                            re.search(
+                                r'name=["\']elt_preload["\']',
+                                inspect_html,
+                                re.IGNORECASE,
+                            )
+                            and re.search(
+                                r'name=["\']apply["\']',
+                                inspect_html,
+                                re.IGNORECASE,
+                            )
+                        )
+                        has_new_fields = bool(
+                            re.search(
+                                r'name=["\']elt_preload_2["\']',
+                                inspect_html,
+                                re.IGNORECASE,
+                            )
+                            and re.search(
+                                r'name=["\']apply_2["\']',
+                                inspect_html,
+                                re.IGNORECASE,
+                            )
+                        )
+
+                        if has_legacy_fields:
+                            use_legacy_form = True
+                        elif has_new_fields:
+                            use_legacy_form = False
+
+                        _LOGGER.debug(
+                            "Somfy installer form detected on %s: %s",
+                            candidate,
+                            "legacy (elt_preload/apply)"
+                            if use_legacy_form
+                            else "new (elt_preload_2/apply_2)",
+                        )
+                    except SomfyException as inspect_ex:
+                        _LOGGER.debug(
+                            "Unable to inspect Somfy installer form on %s; "
+                            "using URL-based payload fallback: %s",
+                            candidate,
+                            inspect_ex,
+                        )
+
+                    if use_legacy_form:
+                        form = {
+                            "elt_preload": str(element_id),
+                            "toggle": "",
+                            "apply": "",
+                        }
+                    else:
+                        form = {
+                            "elt_preload_2": str(element_id),
+                            "toggle": "",
+                            "apply_2": "",
+                        }
+
                     try:
                         response = await self.__do_call(
                             "post",
@@ -1387,6 +1586,106 @@ class SomfyProtexial:
                 # Restore Home Assistant's normal user session. If this fails,
                 # propagate the error so HA reports the command as failed.
                 await self.__login()
+
+    async def get_event_journal(self, limit: int = 10) -> list[dict]:
+        """Return the most recent events from the user event journal.
+
+        The journal is read-only. Newer/FR firmwares normally expose
+        ``/fr/journal.htm`` while older firmwares can expose ``/journal.htm``.
+        The alternate URL is tried only after an HTTP 404 and the working URL
+        is then cached for the rest of the session.
+        """
+        async with self._session_lock:
+            return await self.__with_session_retry(
+                self.__get_event_journal, limit
+            )
+
+    async def __get_event_journal(self, limit: int = 10) -> list[dict]:
+        """Fetch and parse the first event-journal page."""
+        limit = max(1, min(int(limit), 50))
+
+        candidates: list[str] = []
+        if self._journal_page:
+            candidates.append(self._journal_page)
+        for candidate in ("/fr/journal.htm", "/journal.htm"):
+            if candidate not in candidates:
+                candidates.append(candidate)
+
+        response = None
+        working_page = None
+        last_404 = None
+
+        for candidate in candidates:
+            try:
+                response = await self.__do_call("get", candidate)
+                working_page = candidate
+                break
+            except SomfyException as err:
+                # GET is read-only, but keep fallback deliberately narrow:
+                # only a missing page (404) justifies trying the other URL.
+                if "Http error (404)" in str(err):
+                    last_404 = err
+                    continue
+                raise
+
+        if response is None or working_page is None:
+            if last_404 is not None:
+                raise last_404
+            raise SomfyException("Event journal page not available")
+
+        self._journal_page = working_page
+        body = await response.text(self.api.get_encoding())
+
+        def _read_js_array(name: str) -> list[str]:
+            match = re.search(
+                rf"var\s+{re.escape(name)}\s*=\s*(\[.*?\])\s*;",
+                body,
+                flags=re.DOTALL,
+            )
+            if not match:
+                raise SomfyException(
+                    f"Unable to parse event journal field: {name}"
+                )
+            try:
+                values = json.loads(match.group(1))
+            except (json.JSONDecodeError, TypeError) as err:
+                raise SomfyException(
+                    f"Unable to decode event journal field: {name}"
+                ) from err
+            if not isinstance(values, list):
+                raise SomfyException(
+                    f"Unexpected event journal field type: {name}"
+                )
+            return [str(value) for value in values]
+
+        dates = _read_js_array("eventdate")
+        times = _read_js_array("eventtime")
+        names = _read_js_array("eventname")
+        places = _read_js_array("eventplace")
+        codes = _read_js_array("eventcode")
+
+        count = min(limit, len(dates), len(times), len(names), len(places), len(codes))
+        events = []
+        for index in range(count):
+            code = codes[index].strip()
+            if code.startswith("(") and code.endswith(")"):
+                code = code[1:-1]
+            events.append(
+                {
+                    "date": _fix_mojibake(dates[index].strip()),
+                    "time": _fix_mojibake(times[index].strip()),
+                    "event": _fix_mojibake(names[index].strip()),
+                    "element": _fix_mojibake(places[index].strip()),
+                    "code": _fix_mojibake(code),
+                }
+            )
+
+        _LOGGER.debug(
+            "Event journal: read %d event(s) from %s",
+            len(events),
+            working_page,
+        )
+        return events
 
     async def get_elements(self) -> list[dict]:
         """Fetch and parse the elements page (wrapped with the session-retry safety net)."""
@@ -1509,9 +1808,7 @@ class SomfyProtexial:
             _LOGGER.warning(
                 "%s/incomplete elements page received (known Somfy "
                 "session bug), keeping the last known door/window states",
-                "Locked elements page returned empty"
-                if self._elements_page_locked
-                else "Empty",
+                "Locked elements page returned empty" if self._elements_page_locked else "Empty",
             )
             return self._last_good_elements
 

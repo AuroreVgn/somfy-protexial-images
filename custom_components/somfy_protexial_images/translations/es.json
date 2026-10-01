@@ -37,10 +37,11 @@
           "home_zones": "Armar zona(s) en casa",
           "arm_code": "Código de armado opcional de 4 dígitos",
           "scan_interval": "Intervalo de actualización en segundos — 0 desactiva la actualización automática",
-          "image_server_url": "URL del servidor local de imágenes",
-          "image_count": "Número de fotos recientes que se mostrarán",
           "installer_username": "Nombre de usuario del instalador (opcional)",
-          "installer_password": "Contraseña del instalador (opcional)"
+          "installer_password": "Contraseña del instalador (opcional)",
+          "arm_code_required": "Exigir código para armar (el desarmado sigue protegido)",
+          "image_server_url": "URL del servidor local de imágenes",
+          "image_count": "Número de fotos recientes que se mostrarán"
         }
       }
     },
@@ -60,10 +61,11 @@
           "home_zones": "Armar zona(s) en casa",
           "arm_code": "Código de armado opcional de 4 dígitos",
           "scan_interval": "Intervalo de consulta (segundos)",
-          "image_server_url": "URL del servidor local de imágenes",
-          "image_count": "Número de fotos recientes que se mostrarán",
           "installer_username": "Nombre de usuario del instalador (opcional)",
-          "installer_password": "Contraseña del instalador (opcional)"
+          "installer_password": "Contraseña del instalador (opcional)",
+          "arm_code_required": "Exigir código para armar (el desarmado sigue protegido)",
+          "image_server_url": "URL del servidor local de imágenes",
+          "image_count": "Número de fotos recientes que se mostrarán"
         }
       }
     },
@@ -96,6 +98,12 @@
       "last_sync": {
         "name": "Última sincronización"
       },
+      "centrale_datetime": {
+        "name": "Fecha y hora de la central"
+      },
+      "event_journal": {
+        "name": "Registro de eventos"
+      },
       "last_image_event": {
         "name": "Último evento de imagen"
       },
@@ -110,9 +118,6 @@
       },
       "last_local_communication": {
         "name": "Última comunicación con el servidor local"
-      },
-      "centrale_datetime": {
-        "name": "Fecha y hora de la central"
       }
     },
     "alarm_control_panel": {
@@ -133,17 +138,17 @@
       "reset_link_err": {
         "name": "Restablecer fallo del enlace de radio"
       },
-      "start_image_surveillance": {
-        "name": "Iniciar vigilancia de imágenes"
-      },
-      "stop_image_surveillance": {
-        "name": "Detener vigilancia de imágenes"
-      },
       "read_centrale_datetime": {
         "name": "Leer la fecha y la hora de la central"
       },
       "sync_centrale_datetime": {
         "name": "Sincronizar la fecha y la hora de la central"
+      },
+      "start_image_surveillance": {
+        "name": "Iniciar vigilancia de imágenes"
+      },
+      "stop_image_surveillance": {
+        "name": "Detener vigilancia de imágenes"
       }
     },
     "binary_sensor": {
@@ -227,11 +232,6 @@
         "name": "Luces"
       }
     },
-    "image": {
-      "recent_image": {
-        "name": "Imagen reciente {number}"
-      }
-    },
     "switch": {
       "element_active": {
         "name": "{element} (PAUSA)"
@@ -249,6 +249,11 @@
       },
       "entry_delay": {
         "name": "Temporización de entrada"
+      }
+    },
+    "image": {
+      "recent_image": {
+        "name": "Imagen reciente {number}"
       }
     },
     "select": {

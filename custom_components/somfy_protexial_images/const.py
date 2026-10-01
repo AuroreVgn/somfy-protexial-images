@@ -14,6 +14,7 @@ CONF_CODE = "code"
 CONF_CODES = "codes"
 CONF_MODES = "modes"
 CONF_ARM_CODE = "arm_code"
+CONF_ARM_CODE_REQUIRED = "arm_code_required"
 CONF_NIGHT_ZONES = "night_zones"
 CONF_HOME_ZONES = "home_zones"
 CONF_IMAGE_SERVER_URL = "image_server_url"
@@ -25,6 +26,7 @@ API = "api"
 COORDINATOR = "coordinator"
 DEVICE_INFO = "device_info"
 REFRESH_ELEMENTS = "refresh_elements"
+REFRESH_INTERVAL_STORE = "refresh_interval_store"
 
 CHALLENGE_REGEX = r"\b[A-F][1-5]\b"
 
@@ -48,6 +50,8 @@ class SomfyError(str, Enum):
     SESSION_ALREADY_OPEN = "(0x0902)"
     NOT_AUTHORIZED = "(0x0903)"
     UNKNOWN_PARAMETER = "(0x1003)"
+    UNKNOWN_PARAMETER_ALT = "(0x0A03)"
+    BAD_PARAMETER = "(0x0800)"
     WRONG_CODE_ALT = "(0x1101)"
     WRONG_CREDENTIALS_ALT = "(0x0901)"
     WRONG_CREDENTIALS_2_ALT = "(0x0810)"
@@ -79,9 +83,9 @@ class Page(str, Enum):
     PILOTAGE = "pilotage"
     STATUS = "status"
     CAMERA = "camera"
-    INSTALLER_ELEMENTS = "installer_elements"
     ERROR = "error"
     ELEMENTS = "elements"
+    INSTALLER_ELEMENTS = "installer_elements"
     CHALLENGE_CARD = "challenge_card"
     VERSION = "version"
     DEFAULT = "default"
@@ -93,6 +97,7 @@ class Selector(str, Enum):
     ERROR_CODE = "error_code"
     FOOTER = "footer"
     CHALLENGE_CARD = "challenge_card"
+
 
 
 IMAGE_SURVEILLANCE_BINARY_SENSOR = {
@@ -251,8 +256,7 @@ BUTTONS = [
         "id": "reset_link_err",
         "translation_key": "reset_link_err",
         "icon": "mdi:access-point-off",
-    },
-    {
+    },    {
         "id": "start_image_surveillance",
         "translation_key": "start_image_surveillance",
         "icon": "mdi:camera-wireless",

@@ -4,6 +4,7 @@ Somfy Protexial
 
 from datetime import timedelta
 import logging
+import time
 
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntityFeature
 from homeassistant.config_entries import ConfigEntry
@@ -20,6 +21,7 @@ from homeassistant.helpers import aiohttp_client, device_registry as dr
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -37,6 +39,7 @@ from .const import (
     COORDINATOR,
     DEVICE_INFO,
     REFRESH_ELEMENTS,
+    REFRESH_INTERVAL_STORE,
     DOMAIN,
     ApiType,
     Zone,
@@ -50,14 +53,14 @@ SCAN_INTERVAL = timedelta(seconds=20)
 PLATFORMS = [
     Platform.ALARM_CONTROL_PANEL,
     Platform.BINARY_SENSOR,
-    Platform.BUTTON,  # Added BUTTON platform for default reset buttons (battery/alarm/link)
+    Platform.BUTTON,
     Platform.COVER,
     Platform.LIGHT,
     Platform.IMAGE,
-    Platform.NUMBER,  # Runtime/restorable automatic refresh interval
-    Platform.SELECT,  # Installer i_reggen sound-level settings
-    Platform.SENSOR,  # Added SENSOR platform for GSM Provider and GSM Signal Strength
-    Platform.SWITCH,  # Per-element active/paused control
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
 ]
 
 
@@ -86,6 +89,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     last_status = None
     last_elements = []
+    last_journal = []
+    last_journal_refresh = 0.0
     last_images = []
     last_image_event = None
     last_image_event_count = None
@@ -94,9 +99,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     last_image_transmitter = None
     last_image_transmitter_next_update = None
 
-    image_server_url = str(
-        entry.data.get(CONF_IMAGE_SERVER_URL, "") or ""
-    ).strip().rstrip("/")
+    image_server_url = str(entry.data.get(CONF_IMAGE_SERVER_URL, "") or "").strip().rstrip("/")
     image_count = int(entry.data.get(CONF_IMAGE_COUNT, 5))
 
     async def _refresh_elements():
@@ -106,8 +109,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return last_elements
 
     async def _get_status():
-        nonlocal last_status, last_elements, last_images
-        nonlocal last_image_event, last_image_event_count
+        nonlocal last_status, last_elements, last_journal, last_journal_refresh
+        nonlocal last_images, last_image_event, last_image_event_count
         nonlocal last_ftp, last_local_communication
         nonlocal last_image_transmitter, last_image_transmitter_next_update
         try:
@@ -129,23 +132,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.debug("new status: %s - old: %s", current_status, last_status)
 
             status_changed = current_status != last_status
-
-            # Same strategy as the Jeedom plugin (protexiom.class.php /
-            # setStatusFromSpBrowser): besides refreshing the per-door/window
-            # element list whenever the global status changes, also force a
-            # refresh on every poll while at least one door/window is
-            # reported open. Without this, a door/window state change can be
-            # missed for several minutes because it doesn't necessarily
-            # change any of the global status.xml fields, so the per-zone
-            # list would otherwise only "catch up" whenever an unrelated
-            # field (GSM signal, etc.) happens to change.
-            #
-            # This costs one extra HTTP GET to the centrale per scan_interval
-            # *only* while something is open - negligible over a wired
-            # connection - and it does not draw on the door/window sensors'
-            # own batteries: they push their state to the centrale over
-            # radio asynchronously, and this call only reads back what the
-            # centrale already knows.
             door_open = current_status.get("door") != "ok"
 
             if status_changed or door_open:
@@ -153,6 +139,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     _LOGGER.info("Status changed: %s - old: %s", current_status, last_status)
                 last_status = current_status
                 await _refresh_elements()
+
+            # The event journal is useful but does not need to be fetched at
+            # every normal status refresh. Refresh it at most every 5 minutes
+            # and keep the last known-good value if the journal page fails.
+            now_monotonic = time.monotonic()
+            if not last_journal or now_monotonic - last_journal_refresh >= 300:
+                try:
+                    last_journal = await protexial.get_event_journal(limit=10)
+                    last_journal_refresh = now_monotonic
+                except Exception as journal_err:
+                    _LOGGER.warning(
+                        "Unable to refresh Somfy event journal; keeping previous data: %s",
+                        journal_err,
+                    )
+                    # Avoid hammering an unsupported/temporarily unavailable
+                    # page on every coordinator refresh.
+                    last_journal_refresh = now_monotonic
 
             # Read the image transmitter link directly from u_regcam.htm.
             # This is the state represented by Somfy's "Liaison transmetteur"
@@ -253,12 +256,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         status_err,
                     )
 
-            # Mirrors Jeedom's lastCommunication/timeout diagnostic (updated
-            # on every successful poll in checkAndUpdateCmdProtexiom()): a
-            # timestamp of the last successful exchange with the centrale,
-            # exposed as a dedicated diagnostic sensor (see const.py SENSORS
-            # "last_sync") so a non-responding centrale can be spotted
-            # without digging through the logs.
+            # Compute age of the most recent image.
             last_image_age = None
             if last_images:
                 received_at = last_images[0].get("received_at")
@@ -268,14 +266,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         now = dt_util.utcnow()
                         if parsed_received.tzinfo is None:
                             parsed_received = parsed_received.replace(tzinfo=now.tzinfo)
-                        last_image_age = max(
-                            0,
-                            int((now - parsed_received).total_seconds()),
-                        )
+                        last_image_age = max(0, int((now - parsed_received).total_seconds()))
 
             status_dict = {
                 **current_status,
                 "elements": last_elements,
+                "event_journal": last_journal,
                 "last_sync": dt_util.utcnow(),
                 "images": last_images,
                 "image_transmitter": last_image_transmitter,
@@ -290,10 +286,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}")
 
-    scan_interval = int(entry.data.get(CONF_SCAN_INTERVAL, 60))
-    update_interval = (
-        None if scan_interval == 0 else timedelta(seconds=scan_interval)
+    # The config-entry value is only the initial/default value. Once the
+    # refresh interval entity has been used, its dedicated Store value is the
+    # single source of truth across reloads and Home Assistant restarts.
+    refresh_interval_store = Store(
+        hass, 1, f"{DOMAIN}.{entry.entry_id}.refresh_interval"
     )
+    stored_refresh_interval = await refresh_interval_store.async_load()
+    if isinstance(stored_refresh_interval, dict):
+        stored_refresh_interval = stored_refresh_interval.get("value")
+    try:
+        scan_interval = int(stored_refresh_interval)
+    except (TypeError, ValueError):
+        scan_interval = int(entry.data.get(CONF_SCAN_INTERVAL, 60))
+    if not 0 <= scan_interval <= 86400:
+        scan_interval = int(entry.data.get(CONF_SCAN_INTERVAL, 60))
+    update_interval = None if scan_interval == 0 else timedelta(seconds=scan_interval)
 
     coordinator = DataUpdateCoordinator(
         hass,
@@ -328,15 +336,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         COORDINATOR: coordinator,
         DEVICE_INFO: device_info,
         REFRESH_ELEMENTS: _refresh_elements,
+        REFRESH_INTERVAL_STORE: refresh_interval_store,
     }
 
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     await coordinator.async_config_entry_first_refresh()
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 

@@ -37,10 +37,11 @@
           "home_zones": "Anwesend-Zone(n) scharf",
           "arm_code": "Optionaler 4-stelliger Scharfschaltungscode",
           "scan_interval": "Aktualisierungsintervall in Sekunden — 0 deaktiviert die automatische Aktualisierung",
-          "image_server_url": "URL des lokalen Bildservers",
-          "image_count": "Anzahl der anzuzeigenden letzten Fotos",
           "installer_username": "Installateur-Benutzername (optional)",
-          "installer_password": "Installateur-Passwort (optional)"
+          "installer_password": "Installateur-Passwort (optional)",
+          "arm_code_required": "Code zum Scharfschalten erforderlich (Unscharfschalten bleibt geschützt)",
+          "image_server_url": "URL des lokalen Bildservers",
+          "image_count": "Anzahl der anzuzeigenden letzten Fotos"
         }
       }
     },
@@ -60,10 +61,11 @@
           "home_zones": "Anwesend-Zone(n) scharf",
           "arm_code": "Optionaler 4-stelliger Scharfschaltungscode",
           "scan_interval": "Abfrageintervall (Sekunden)",
-          "image_server_url": "URL des lokalen Bildservers",
-          "image_count": "Anzahl der anzuzeigenden letzten Fotos",
           "installer_username": "Installateur-Benutzername (optional)",
-          "installer_password": "Installateur-Passwort (optional)"
+          "installer_password": "Installateur-Passwort (optional)",
+          "arm_code_required": "Code zum Scharfschalten erforderlich (Unscharfschalten bleibt geschützt)",
+          "image_server_url": "URL des lokalen Bildservers",
+          "image_count": "Anzahl der anzuzeigenden letzten Fotos"
         }
       }
     },
@@ -96,6 +98,12 @@
       "last_sync": {
         "name": "Letzte Synchronisierung"
       },
+      "centrale_datetime": {
+        "name": "Datum und Uhrzeit der Zentrale"
+      },
+      "event_journal": {
+        "name": "Ereignisprotokoll"
+      },
       "last_image_event": {
         "name": "Letztes Bildereignis"
       },
@@ -110,9 +118,6 @@
       },
       "last_local_communication": {
         "name": "Letzte Kommunikation mit lokalem Server"
-      },
-      "centrale_datetime": {
-        "name": "Datum und Uhrzeit der Zentrale"
       }
     },
     "alarm_control_panel": {
@@ -133,17 +138,17 @@
       "reset_link_err": {
         "name": "Funkverbindungsfehler zurücksetzen"
       },
-      "start_image_surveillance": {
-        "name": "Bildüberwachung starten"
-      },
-      "stop_image_surveillance": {
-        "name": "Bildüberwachung stoppen"
-      },
       "read_centrale_datetime": {
         "name": "Datum und Uhrzeit der Zentrale lesen"
       },
       "sync_centrale_datetime": {
         "name": "Datum und Uhrzeit der Zentrale synchronisieren"
+      },
+      "start_image_surveillance": {
+        "name": "Bildüberwachung starten"
+      },
+      "stop_image_surveillance": {
+        "name": "Bildüberwachung stoppen"
       }
     },
     "binary_sensor": {
@@ -227,11 +232,6 @@
         "name": "Lichter"
       }
     },
-    "image": {
-      "recent_image": {
-        "name": "Letztes Bild {number}"
-      }
-    },
     "switch": {
       "element_active": {
         "name": "{element} (PAUSE)"
@@ -249,6 +249,11 @@
       },
       "entry_delay": {
         "name": "Eingangsverzögerung"
+      }
+    },
+    "image": {
+      "recent_image": {
+        "name": "Letztes Bild {number}"
       }
     },
     "select": {

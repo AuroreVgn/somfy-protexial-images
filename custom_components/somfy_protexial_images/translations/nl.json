@@ -37,10 +37,11 @@
           "home_zones": "Thuiszone(s) inschakelen",
           "arm_code": "Optionele 4-cijferige inschakelcode",
           "scan_interval": "Vernieuwingsinterval in seconden — 0 schakelt automatische vernieuwing uit",
-          "image_server_url": "URL van lokale afbeeldingsserver",
-          "image_count": "Aantal recente foto’s om weer te geven",
           "installer_username": "Gebruikersnaam installateur (optioneel)",
-          "installer_password": "Wachtwoord installateur (optioneel)"
+          "installer_password": "Wachtwoord installateur (optioneel)",
+          "arm_code_required": "Code vereisen voor inschakelen (uitschakelen blijft beveiligd)",
+          "image_server_url": "URL van lokale afbeeldingsserver",
+          "image_count": "Aantal recente foto’s om weer te geven"
         }
       }
     },
@@ -60,10 +61,11 @@
           "home_zones": "Thuiszone(s) inschakelen",
           "arm_code": "Optionele 4-cijferige inschakelcode",
           "scan_interval": "Scaninterval (seconden)",
-          "image_server_url": "URL van lokale afbeeldingsserver",
-          "image_count": "Aantal recente foto’s om weer te geven",
           "installer_username": "Gebruikersnaam installateur (optioneel)",
-          "installer_password": "Wachtwoord installateur (optioneel)"
+          "installer_password": "Wachtwoord installateur (optioneel)",
+          "arm_code_required": "Code vereisen voor inschakelen (uitschakelen blijft beveiligd)",
+          "image_server_url": "URL van lokale afbeeldingsserver",
+          "image_count": "Aantal recente foto’s om weer te geven"
         }
       }
     },
@@ -96,6 +98,12 @@
       "last_sync": {
         "name": "Laatste synchronisatie"
       },
+      "centrale_datetime": {
+        "name": "Datum en tijd van de centrale"
+      },
+      "event_journal": {
+        "name": "Gebeurtenissenlogboek"
+      },
       "last_image_event": {
         "name": "Laatste afbeeldingsgebeurtenis"
       },
@@ -110,9 +118,6 @@
       },
       "last_local_communication": {
         "name": "Laatste communicatie met lokale server"
-      },
-      "centrale_datetime": {
-        "name": "Datum en tijd van de centrale"
       }
     },
     "alarm_control_panel": {
@@ -133,17 +138,17 @@
       "reset_link_err": {
         "name": "Radioverbindingsfout resetten"
       },
-      "start_image_surveillance": {
-        "name": "Beeldbewaking starten"
-      },
-      "stop_image_surveillance": {
-        "name": "Beeldbewaking stoppen"
-      },
       "read_centrale_datetime": {
         "name": "Datum en tijd van de centrale lezen"
       },
       "sync_centrale_datetime": {
         "name": "Datum en tijd van de centrale synchroniseren"
+      },
+      "start_image_surveillance": {
+        "name": "Beeldbewaking starten"
+      },
+      "stop_image_surveillance": {
+        "name": "Beeldbewaking stoppen"
       }
     },
     "binary_sensor": {
@@ -227,11 +232,6 @@
         "name": "Lichten"
       }
     },
-    "image": {
-      "recent_image": {
-        "name": "Recente afbeelding {number}"
-      }
-    },
     "switch": {
       "element_active": {
         "name": "{element} (PAUZE)"
@@ -249,6 +249,11 @@
       },
       "entry_delay": {
         "name": "Inloopvertraging"
+      }
+    },
+    "image": {
+      "recent_image": {
+        "name": "Recente afbeelding {number}"
       }
     },
     "select": {

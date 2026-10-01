@@ -31,6 +31,7 @@ from .const import (
     ALL_ZONES,
     CONF_API_TYPE,
     CONF_ARM_CODE,
+    CONF_ARM_CODE_REQUIRED,
     CONF_CODE,
     CONF_CODES,
     CONF_HOME_ZONES,
@@ -222,10 +223,9 @@ class ProtexialConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_NIGHT_ZONES: night_zones,
                         CONF_HOME_ZONES: home_zones,
                         CONF_ARM_CODE: arm_code,
+                        CONF_ARM_CODE_REQUIRED: user_input[CONF_ARM_CODE_REQUIRED],
                         CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL],
-                        CONF_IMAGE_SERVER_URL: user_input.get(
-                            CONF_IMAGE_SERVER_URL, ""
-                        ).strip().rstrip("/"),
+                        CONF_IMAGE_SERVER_URL: user_input.get(CONF_IMAGE_SERVER_URL, "").strip().rstrip("/"),
                         CONF_IMAGE_COUNT: int(user_input[CONF_IMAGE_COUNT]),
                         ATTR_SW_VERSION: self.version,
                     },
@@ -259,6 +259,7 @@ class ProtexialConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_ARM_CODE): TextSelector(
                         TextSelectorConfig(type=TextSelectorType.PASSWORD)
                     ),
+                    vol.Required(CONF_ARM_CODE_REQUIRED, default=True): cv.boolean,
                     vol.Optional(CONF_INSTALLER_USERNAME, default="i"): cv.string,
                     vol.Optional(CONF_INSTALLER_PASSWORD): TextSelector(
                         TextSelectorConfig(type=TextSelectorType.PASSWORD)
@@ -326,10 +327,11 @@ class ProtexialOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_NIGHT_ZONES: night_zones,
                     CONF_HOME_ZONES: home_zones,
                     CONF_ARM_CODE: arm_code,
-                    CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL],
-                    CONF_IMAGE_SERVER_URL: user_input.get(
-                        CONF_IMAGE_SERVER_URL, ""
-                    ).strip().rstrip("/"),
+                    CONF_ARM_CODE_REQUIRED: user_input[CONF_ARM_CODE_REQUIRED],
+                    # Keep the original setup value for backward compatibility.
+                    # Runtime changes are managed by the refresh interval entity.
+                    CONF_SCAN_INTERVAL: self._config_entry.data.get(CONF_SCAN_INTERVAL, 60),
+                    CONF_IMAGE_SERVER_URL: user_input.get(CONF_IMAGE_SERVER_URL, "").strip().rstrip("/"),
                     CONF_IMAGE_COUNT: int(user_input[CONF_IMAGE_COUNT]),
                     ATTR_SW_VERSION: self._config_entry.data[ATTR_SW_VERSION],
                 }
@@ -369,20 +371,16 @@ class ProtexialOptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Optional(CONF_ARM_CODE): TextSelector(
                         TextSelectorConfig(type=TextSelectorType.PASSWORD)
                     ),
+                    vol.Required(
+                        CONF_ARM_CODE_REQUIRED,
+                        default=self._config_entry.data.get(CONF_ARM_CODE_REQUIRED, True),
+                    ): cv.boolean,
                     vol.Optional(
                         CONF_INSTALLER_USERNAME,
                         default=self._config_entry.data.get(CONF_INSTALLER_USERNAME) or "i",
                     ): cv.string,
                     vol.Optional(CONF_INSTALLER_PASSWORD): TextSelector(
                         TextSelectorConfig(type=TextSelectorType.PASSWORD)
-                    ),
-                    vol.Required(
-                        CONF_SCAN_INTERVAL,
-                        default=self.config_entry.data[CONF_SCAN_INTERVAL],
-                    ): NumberSelector(
-                        NumberSelectorConfig(
-                            mode=NumberSelectorMode.BOX, min=0, max=86400, step=1
-                        )
                     ),
                     vol.Optional(
                         CONF_IMAGE_SERVER_URL,

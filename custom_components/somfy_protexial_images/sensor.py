@@ -89,8 +89,17 @@ async def async_setup_entry(
     #         )
     #     )
 
+    # Read-only user event journal (10 most recent events).
+    entities.append(
+        ProtexialEventJournalSensor(
+            device_info=device_info,
+            coordinator=coordinator,
+        )
+    )
+
     # Date/time stored in the centrale is available only through the
-    # installer general-settings page.
+    # installer general-settings page, so expose this sensor only when
+    # installer credentials are configured.
     protexial = hass.data[DOMAIN][config_entry.entry_id][API]
     if protexial.installer_username and protexial.installer_password:
         entities.append(
@@ -105,7 +114,6 @@ async def async_setup_entry(
         async_add_entities(entities)
     else:
         _LOGGER.debug("No sensors to add (SENSORS + zones).")
-
 
 
 # ---------- Existing sensors (GSM, etc.) ----------
@@ -208,6 +216,46 @@ class ProtexialLastSyncSensor(CoordinatorEntity, RestoreSensor):
         self.async_write_ha_state()
 
 
+
+class ProtexialEventJournalSensor(CoordinatorEntity, SensorEntity):
+    """Expose the 10 most recent events from the Somfy user journal."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "event_journal"
+    _attr_icon = "mdi:clipboard-text-clock-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, device_info, coordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_event_journal"
+        self._attr_device_info = device_info
+        self._native_value = None
+        self._events: list[dict] = []
+
+    @property
+    def native_value(self):
+        """Return a compact representation of the latest event."""
+        return self._native_value
+
+    @property
+    def extra_state_attributes(self):
+        """Expose the 10 most recent journal entries."""
+        return {"events": self._events}
+
+    def _handle_coordinator_update(self) -> None:
+        events = (self.coordinator.data or {}).get("event_journal") or []
+        self._events = list(events[:10])
+        if self._events:
+            latest = self._events[0]
+            self._native_value = (
+                f"{latest.get('date', '')} {latest.get('time', '')} - "
+                f"{latest.get('event', '')}"
+            ).strip(" -")
+        else:
+            self._native_value = None
+        self.async_write_ha_state()
+
+
 class ProtexialCentraleDateTimeSensor(RestoreSensor):
     """Last date/time read directly from the Somfy centrale."""
 
@@ -258,7 +306,6 @@ class ProtexialCentraleDateTimeSensor(RestoreSensor):
             "centrale_datetime"
         )
         self.async_write_ha_state()
-
 
 
 # ---------- Per-element zone sensors (commented) ----------
