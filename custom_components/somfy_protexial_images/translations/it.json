@@ -240,7 +240,10 @@
         "name": "DING DONG sulla sirena interna"
       },
       "transmitter_beep": {
-        "name": "Bip del trasmettitore"
+        "name": "Segnale acustico del trasmettitore"
+      },
+      "ding_dong": {
+        "name": "DING DONG sulla sirena interna"
       }
     },
     "number": {
@@ -258,7 +261,7 @@
     },
     "select": {
       "siren_beep_level": {
-        "name": "Livello dei bip delle sirene",
+        "name": "Livello dei segnali acustici delle sirene",
         "state": {
           "low": "Basso",
           "medium": "Medio",

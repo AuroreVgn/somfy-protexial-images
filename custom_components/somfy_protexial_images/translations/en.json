@@ -241,6 +241,9 @@
       },
       "transmitter_beep": {
         "name": "Transmitter beep"
+      },
+      "ding_dong": {
+        "name": "DING DONG on indoor siren"
       }
     },
     "number": {

@@ -240,7 +240,10 @@
         "name": "DING DONG an der Innensirene"
       },
       "transmitter_beep": {
-        "name": "Signalton am Übertragungsgerät"
+        "name": "Signalton des Übertragungsgeräts"
+      },
+      "ding_dong": {
+        "name": "DING DONG auf Innensirene"
       }
     },
     "number": {

@@ -251,6 +251,9 @@
       },
       "transmitter_beep": {
         "name": "Bip sonore sur le transmetteur"
+      },
+      "ding_dong": {
+        "name": "DING DONG sur sirène intérieure"
       }
     },
     "number": {

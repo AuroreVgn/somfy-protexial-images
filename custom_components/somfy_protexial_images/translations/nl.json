@@ -240,7 +240,10 @@
         "name": "DING DONG op binnensirene"
       },
       "transmitter_beep": {
-        "name": "Pieptoon op zender"
+        "name": "Pieptoon van de zender"
+      },
+      "ding_dong": {
+        "name": "DING DONG op binnensirene"
       }
     },
     "number": {

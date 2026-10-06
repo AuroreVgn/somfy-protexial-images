@@ -241,6 +241,9 @@
       },
       "transmitter_beep": {
         "name": "Pitido del transmisor"
+      },
+      "ding_dong": {
+        "name": "DING DONG en sirena interior"
       }
     },
     "number": {
