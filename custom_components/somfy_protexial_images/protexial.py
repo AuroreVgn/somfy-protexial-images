@@ -50,7 +50,6 @@ _ACCESS_RIGHTS_MESSAGES = {
     "es": "Permisos de acceso insuficientes",
     "it": "Diritti di accesso insufficienti",
     "nl": "Onvoldoende toegangsrechten",
-    "pt": "Permissões de acesso insuficientes",
 }
 
 
