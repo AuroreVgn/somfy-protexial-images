@@ -6,6 +6,7 @@ const ELEMENTS_CARD_VERSION = "v2.1.10";
 
 const ELEMENTS_TRANSLATIONS = {
   fr: {
+    memoryOpen:"Ouverture mémoire", memoryClose:"Fermeture mémoire",
     battery:"Batterie", link:"Liaison", house:"Défaut", tamper:"Arrachement", door:"Ouverture", state:"État", zone:"Zone",
     openings:"Ouvertures", motion:"Mouvements", technical:"Technique", control:"Centrale", sirens:"Sirènes", keypads:"Claviers",
     remotes:"Télécommandes", badges:"Badges", other:"Autres", total:"Nombre total d’éléments", errors:"Éléments en erreur",
@@ -16,6 +17,7 @@ const ELEMENTS_TRANSLATIONS = {
     showEntityId:"Afficher les entity_id", compact:"Mode compact"
   },
   en: {
+    memoryOpen:"Open memory", memoryClose:"Close memory",
     battery:"Battery", link:"Link", house:"Fault", tamper:"Tamper", door:"Opening", state:"State", zone:"Zone",
     openings:"Openings", motion:"Motion", technical:"Technical", control:"Control", sirens:"Sirens", keypads:"Keypads",
     remotes:"Remotes", badges:"Badges", other:"Other", total:"Total equipment", errors:"Equipment with errors",
@@ -25,6 +27,7 @@ const ELEMENTS_TRANSLATIONS = {
     device:"Somfy device", title:"Title", onlyProblems:"Show only equipment with faults", showEntityId:"Show entity IDs", compact:"Compact mode"
   },
   de: {
+    memoryOpen:"Speicher öffnen", memoryClose:"Speicher schließen",
     battery:"Batterie", link:"Verbindung", house:"Fehler", tamper:"Sabotage", door:"Öffnung", state:"Status", zone:"Zone",
     openings:"Öffnungen", motion:"Bewegung", technical:"Technik", control:"Zentrale", sirens:"Sirenen", keypads:"Tastaturen",
     remotes:"Fernbedienungen", badges:"Badges", other:"Andere", total:"Anzahl Elemente", errors:"Elemente mit Fehler",
@@ -34,6 +37,7 @@ const ELEMENTS_TRANSLATIONS = {
     device:"Somfy-Gerät", title:"Titel", onlyProblems:"Nur fehlerhafte Geräte anzeigen", showEntityId:"Entity-IDs anzeigen", compact:"Kompaktmodus"
   },
   es: {
+    memoryOpen:"Abrir memoria", memoryClose:"Cerrar memoria",
     battery:"Batería", link:"Enlace", house:"Fallo", tamper:"Sabotaje", door:"Apertura", state:"Estado", zone:"Zona",
     openings:"Aperturas", motion:"Movimiento", technical:"Técnico", control:"Central", sirens:"Sirenas", keypads:"Teclados",
     remotes:"Mandos", badges:"Badges", other:"Otros", total:"Número total de elementos", errors:"Elementos con error",
@@ -43,6 +47,7 @@ const ELEMENTS_TRANSLATIONS = {
     device:"Dispositivo Somfy", title:"Título", onlyProblems:"Mostrar solo equipos con fallos", showEntityId:"Mostrar entity_id", compact:"Modo compacto"
   },
   it: {
+    memoryOpen:"Apri memoria", memoryClose:"Chiudi memoria",
     battery:"Batteria", link:"Collegamento", house:"Anomalia", tamper:"Manomissione", door:"Apertura", state:"Stato", zone:"Zona",
     openings:"Aperture", motion:"Movimento", technical:"Tecnico", control:"Centrale", sirens:"Sirene", keypads:"Tastiere",
     remotes:"Telecomandi", badges:"Badge", other:"Altri", total:"Numero totale elementi", errors:"Elementi in errore",
@@ -52,6 +57,7 @@ const ELEMENTS_TRANSLATIONS = {
     device:"Dispositivo Somfy", title:"Titolo", onlyProblems:"Mostra solo dispositivi con anomalie", showEntityId:"Mostra entity_id", compact:"Modalità compatta"
   },
   nl: {
+    memoryOpen:"Geheugen openen", memoryClose:"Geheugen sluiten",
     battery:"Batterij", link:"Verbinding", house:"Storing", tamper:"Sabotage", door:"Opening", state:"Status", zone:"Zone",
     openings:"Openingen", motion:"Beweging", technical:"Techniek", control:"Centrale", sirens:"Sirenes", keypads:"Bedienpanelen",
     remotes:"Afstandsbedieningen", badges:"Badges", other:"Overige", total:"Totaal aantal elementen", errors:"Elementen met fout",
@@ -61,6 +67,7 @@ const ELEMENTS_TRANSLATIONS = {
     device:"Somfy-apparaat", title:"Titel", onlyProblems:"Alleen apparaten met fouten tonen", showEntityId:"Entity-ID’s tonen", compact:"Compacte modus"
   },
   pt: {
+    memoryOpen:"Abrir memória", memoryClose:"Fechar memória",
     battery:"Bateria", link:"Ligação", house:"Falha", tamper:"Violação", door:"Abertura", state:"Estado", zone:"Zona",
     openings:"Aberturas", motion:"Movimento", technical:"Técnico", control:"Central", sirens:"Sirenes", keypads:"Teclados",
     remotes:"Comandos", badges:"Crachás", other:"Outros", total:"Número total de elementos", errors:"Elementos com erro",
@@ -826,16 +833,16 @@ class SomfyProtexialElementsCard extends HTMLElement {
           ${memoryButtons?.open ? `
             <button type="button" class="pause-button active"
               data-memory-button="${memoryButtons.open.entity_id}"
-              title="Ouverture mémoire">
+              title="${et(this._hass, "memoryOpen")}">
               <ha-icon icon="mdi:lock-open-outline"></ha-icon>
-              <span>Ouverture mémoire</span>
+              <span>${et(this._hass, "memoryOpen")}</span>
             </button>` : ""}
           ${memoryButtons?.close ? `
             <button type="button" class="pause-button active"
               data-memory-button="${memoryButtons.close.entity_id}"
-              title="Fermeture mémoire">
+              title="${et(this._hass, "memoryClose")}">
               <ha-icon icon="mdi:lock-outline"></ha-icon>
-              <span>Fermeture mémoire</span>
+              <span>${et(this._hass, "memoryClose")}</span>
             </button>` : ""}
           ${pauseSwitch ? `
             <button
