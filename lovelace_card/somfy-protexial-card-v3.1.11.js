@@ -1024,9 +1024,8 @@ _formatName(entity, fallbackKey) {
     const isArmed = !["disarmed", "unavailable", "unknown"].includes(alarm.state);
     const activeSensors = SENSORS_DEF.filter(sensor => this.config.sensors.includes(sensor.key));
     const resets = RESET_DEF.map(reset => ({ ...reset, entityId: this._resolveReset(reset) })).filter(reset => this._getState(reset.entityId));
-    // Pairing memory uses dedicated commands, separate from fault-reset actions.
-    const pairingButtons = resets.filter(reset => reset.key === "memoryOpen" || reset.key === "memoryClose");
-    const faultResets = resets.filter(reset => reset.key !== "memoryOpen" && reset.key !== "memoryClose");
+    // Afficher les commandes mémoire dans le groupe existant, comme sur la carte de référence.
+    // Les autres commandes de réinitialisation restent inchangées.
     const faultEntities = this._faultEntities();
     const refreshEntity = this._findRefresh();
     const lastSyncText = this._lastSyncText();
@@ -1207,14 +1206,9 @@ _formatName(entity, fallbackKey) {
           </div>`).join("") : `<div class="ok-box"><ha-icon icon="mdi:check-circle"></ha-icon>${tr(this._hass, "noFaults")}</div>`}
         </div>` : ""}
 
-        ${pairingButtons.length ? `<div class="section">
-          <div class="section-head"><div class="section-title">Appairage</div></div>
-          <div class="reset-grid">${pairingButtons.map(reset => `<button class="btn reset-btn" data-reset-key="${reset.key}" data-entity-id="${reset.entityId}"><ha-icon icon="${reset.icon}"></ha-icon><span>${tr(this._hass, reset.text)}</span></button>`).join("")}</div>
-        </div>` : ""}
-
-        ${faultResets.length ? `<div class="section">
+        ${resets.length ? `<div class="section">
           <div class="section-head"><div class="section-title">${tr(this._hass, "resetsTitle")}</div></div>
-          <div class="reset-grid">${faultResets.map(reset => `<button class="btn reset-btn" data-reset-key="${reset.key}" data-entity-id="${reset.entityId}"><ha-icon icon="${reset.icon}"></ha-icon><span>${tr(this._hass, reset.text)}</span></button>`).join("")}</div>
+          <div class="reset-grid">${resets.map(reset => `<button class="btn reset-btn" data-reset-key="${reset.key}" data-entity-id="${reset.entityId}"><ha-icon icon="${reset.icon}"></ha-icon><span>${tr(this._hass, reset.text)}</span></button>`).join("")}</div>
         </div>` : ""}
 
         ${(() => {
