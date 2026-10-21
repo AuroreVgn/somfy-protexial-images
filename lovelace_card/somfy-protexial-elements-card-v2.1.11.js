@@ -2,7 +2,7 @@
    Somfy Protexial / Protexiom Card - Elements
    ======================================================== */
 
-const ELEMENTS_CARD_VERSION = "v2.1.10";
+const ELEMENTS_CARD_VERSION = "v2.1.11";
 
 const ELEMENTS_TRANSLATIONS = {
   fr: {
