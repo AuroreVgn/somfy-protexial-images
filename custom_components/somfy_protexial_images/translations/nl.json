@@ -149,6 +149,12 @@
       },
       "stop_image_surveillance": {
         "name": "Beeldbewaking stoppen"
+      },
+      "memory_open": {
+        "name": "Koppelgeheugen openen"
+      },
+      "memory_close": {
+        "name": "Koppelgeheugen sluiten"
       }
     },
     "binary_sensor": {

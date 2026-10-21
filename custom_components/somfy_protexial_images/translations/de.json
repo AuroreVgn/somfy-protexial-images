@@ -149,6 +149,12 @@
       },
       "stop_image_surveillance": {
         "name": "Bildüberwachung stoppen"
+      },
+      "memory_open": {
+        "name": "Anlern-Speicher öffnen"
+      },
+      "memory_close": {
+        "name": "Anlern-Speicher schließen"
       }
     },
     "binary_sensor": {

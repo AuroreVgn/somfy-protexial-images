@@ -149,6 +149,12 @@
       },
       "stop_image_surveillance": {
         "name": "Detener vigilancia de imágenes"
+      },
+      "memory_open": {
+        "name": "Abrir memoria de emparejamiento"
+      },
+      "memory_close": {
+        "name": "Cerrar memoria de emparejamiento"
       }
     },
     "binary_sensor": {

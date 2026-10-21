@@ -149,6 +149,12 @@
       },
       "stop_image_surveillance": {
         "name": "Stop image surveillance"
+      },
+      "memory_open": {
+        "name": "Open pairing memory"
+      },
+      "memory_close": {
+        "name": "Close pairing memory"
       }
     },
     "binary_sensor": {

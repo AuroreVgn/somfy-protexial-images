@@ -159,6 +159,12 @@
       },
       "stop_image_surveillance": {
         "name": "Arrêter la surveillance images"
+      },
+      "memory_open": {
+        "name": "Ouverture mémoire"
+      },
+      "memory_close": {
+        "name": "Fermeture mémoire"
       }
     },
     "binary_sensor": {

@@ -23,6 +23,8 @@ const SENSORS_DEF = [
 ];
 
 const RESET_DEF = [
+  { key: "memoryOpen", configKey: "memory_open_entity", defaultEntity: "button.somfy_protexial_ouverture_memoire", aliases: ["ouverture_memoire", "memory_open"], icon: "mdi:lock-open-outline", text: "memoryOpen" },
+  { key: "memoryClose", configKey: "memory_close_entity", defaultEntity: "button.somfy_protexial_fermeture_memoire", aliases: ["fermeture_memoire", "memory_close"], icon: "mdi:lock-outline", text: "memoryClose" },
   { key: "battery", configKey: "reset_battery_entity", defaultEntity: "button.somfy_protexial_reinitialiser_defaut_piles", aliases: ["reinitialiser_defaut_piles", "reset_battery"], icon: "mdi:battery-sync", text: "resetBattery" },
   { key: "alarm", configKey: "reset_alarm_entity", defaultEntity: "button.somfy_protexial_reinitialiser_defaut_alarme", aliases: ["reinitialiser_defaut_alarme", "reset_alarm"], icon: "mdi:shield-refresh", text: "resetAlarm" },
   { key: "link", configKey: "reset_link_entity", defaultEntity: "button.somfy_protexial_reinitialiser_defaut_liaison_radio", aliases: ["reinitialiser_defaut_liaison_radio", "reset_radio"], icon: "mdi:access-point", text: "resetLink" },
@@ -30,6 +32,7 @@ const RESET_DEF = [
 
 const TRANSLATIONS = {
   fr: {
+    memoryOpen: "Ouverture mémoire", memoryClose: "Fermeture mémoire",
     cardSettings: "Paramètres de la carte", alarmEntity: "Entité alarme", cardTitle: "Titre de la carte",
     entity: "Entité", displayedName: "Nom affiché", alarm: "Alarme", sensorsTitle: "État",
     resetsTitle: "Réinitialisations", noSensors: "Aucun capteur sélectionné", disarm: "Désarmer",
@@ -50,6 +53,7 @@ const TRANSLATIONS = {
     settingsDisplay: "Affichage avancé", imagesTitle: "Images", imageMonitoring: "Surveillance images", startImageMonitoring: "Démarrer", stopImageMonitoring: "Arrêter", imageStartEntity: "Bouton démarrer la surveillance images", imageStopEntity: "Bouton arrêter la surveillance images", galleryUrl: "URL de la galerie locale", imageEntity1: "Image récente 1", imageEntity2: "Image récente 2", imageEntity3: "Image récente 3", imageEntity4: "Image récente 4", imageEntity5: "Image récente 5", localGallery: "Galerie locale", openGallery: "Ouvrir la galerie", clearPin: "Effacer", lastImageEvent: "Dernier événement", lastFtp: "Dernière réception FTP", localServer: "Serveur local", imageAge: "Âge dernière image", recentImages: "Images récentes"
   },
   en: {
+    memoryOpen: "Open pairing memory", memoryClose: "Close pairing memory",
     cardSettings: "Card settings", alarmEntity: "Alarm entity", cardTitle: "Card title", entity: "Entity",
     displayedName: "Displayed name", alarm: "Alarm", sensorsTitle: "Status", resetsTitle: "Resets",
     noSensors: "No sensor selected", disarm: "Disarm", away: "Away", home: "Home", night: "Night",
@@ -68,6 +72,7 @@ const TRANSLATIONS = {
     actionError: "Unable to execute action", clickDetails: "Click for details", settingsDisplay: "Advanced display", imagesTitle: "Images", imageMonitoring: "Image monitoring", startImageMonitoring: "Start", stopImageMonitoring: "Stop", imageStartEntity: "Start image monitoring button", imageStopEntity: "Stop image monitoring button", galleryUrl: "Local gallery URL", imageEntity1: "Recent image 1", imageEntity2: "Recent image 2", imageEntity3: "Recent image 3", imageEntity4: "Recent image 4", imageEntity5: "Recent image 5", localGallery: "Local gallery", openGallery: "Open gallery", clearPin: "Clear", lastImageEvent: "Last event", lastFtp: "Last FTP reception", localServer: "Local server", imageAge: "Latest image age", recentImages: "Recent images"
   },
   de: {
+    memoryOpen: "Speicher öffnen", memoryClose: "Speicher schließen",
     cardSettings:"Karteneinstellungen", alarmEntity:"Alarm-Entität", cardTitle:"Kartentitel", entity:"Entität", displayedName:"Angezeigter Name",
     alarm:"Alarm", sensorsTitle:"Status", resetsTitle:"Zurücksetzen", noSensors:"Kein Sensor ausgewählt", disarm:"Unscharf",
     away:"Abwesend", home:"Anwesend", night:"Nacht", confirmReset:"Zurücksetzen bestätigen", resetBattery:"Batteriefehler",
@@ -85,6 +90,7 @@ const TRANSLATIONS = {
     resetLinkEntity:"Taste zum Zurücksetzen der Funkverbindung"
   },
   es: {
+    memoryOpen: "Abrir memoria", memoryClose: "Cerrar memoria",
     cardSettings:"Ajustes de la tarjeta", alarmEntity:"Entidad de alarma", cardTitle:"Título de la tarjeta", entity:"Entidad", displayedName:"Nombre mostrado",
     alarm:"Alarma", sensorsTitle:"Estado", resetsTitle:"Restablecimientos", noSensors:"Ningún sensor seleccionado", disarm:"Desarmar",
     away:"Ausente", home:"Presente", night:"Noche", confirmReset:"Confirmar restablecimiento", resetBattery:"Fallos de pilas",
@@ -101,6 +107,7 @@ const TRANSLATIONS = {
     resetBatteryEntity:"Botón de reinicio de pilas", resetAlarmEntity:"Botón de reinicio de alarma", resetLinkEntity:"Botón de reinicio del enlace de radio"
   },
   it: {
+    memoryOpen: "Apri memoria", memoryClose: "Chiudi memoria",
     cardSettings:"Impostazioni scheda", alarmEntity:"Entità allarme", cardTitle:"Titolo scheda", entity:"Entità", displayedName:"Nome visualizzato",
     alarm:"Allarme", sensorsTitle:"Stato", resetsTitle:"Ripristini", noSensors:"Nessun sensore selezionato", disarm:"Disattiva",
     away:"Assente", home:"Presente", night:"Notte", confirmReset:"Conferma ripristino", resetBattery:"Errori batterie",
@@ -117,6 +124,7 @@ const TRANSLATIONS = {
     resetBatteryEntity:"Pulsante ripristino batterie", resetAlarmEntity:"Pulsante ripristino allarme", resetLinkEntity:"Pulsante ripristino collegamento radio"
   },
   nl: {
+    memoryOpen: "Geheugen openen", memoryClose: "Geheugen sluiten",
     cardSettings:"Kaartinstellingen", alarmEntity:"Alarmentiteit", cardTitle:"Kaarttitel", entity:"Entiteit", displayedName:"Weergavenaam",
     alarm:"Alarm", sensorsTitle:"Status", resetsTitle:"Resetten", noSensors:"Geen sensor geselecteerd", disarm:"Uitschakelen",
     away:"Afwezig", home:"Aanwezig", night:"Nacht", confirmReset:"Reset bevestigen", resetBattery:"Batterijfouten",
@@ -133,6 +141,7 @@ const TRANSLATIONS = {
     resetBatteryEntity:"Knop batterijfouten resetten", resetAlarmEntity:"Knop alarmfouten resetten", resetLinkEntity:"Knop radioverbinding resetten"
   },
   pt: {
+    memoryOpen: "Abrir memória", memoryClose: "Fechar memória",
     cardSettings:"Definições do cartão", alarmEntity:"Entidade do alarme", cardTitle:"Título do cartão", entity:"Entidade", displayedName:"Nome apresentado",
     alarm:"Alarme", sensorsTitle:"Estado", resetsTitle:"Reposições", noSensors:"Nenhum sensor selecionado", disarm:"Desarmar",
     away:"Ausente", home:"Presente", night:"Noite", confirmReset:"Confirmar reposição", resetBattery:"Erros das pilhas",
@@ -1435,7 +1444,7 @@ _formatName(entity, fallbackKey) {
     const entity = this._getState(entityId);
     const label = this._formatName(entity, reset.text);
     const confirmed = await this._showModal({
-      title: tr(this._hass, "confirmReset"),
+      title: key.startsWith("memory") ? label : tr(this._hass, "confirmReset"),
       message: label,
       confirmText: tr(this._hass, "confirm"),
     });
