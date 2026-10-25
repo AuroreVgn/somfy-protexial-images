@@ -43,6 +43,13 @@
           "image_server_url": "Local image server URL",
           "image_count": "Number of recent photos to expose"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthentication",
+        "description": "Enter the new password for your Somfy control panel.",
+        "data": {
+          "password": "New password"
+        }
       }
     },
     "error": {

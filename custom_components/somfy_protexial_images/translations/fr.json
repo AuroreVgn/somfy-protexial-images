@@ -43,6 +43,13 @@
           "image_server_url": "URL du serveur local des images",
           "image_count": "Nombre de photos récentes à exposer"
         }
+      },
+      "reauth_confirm": {
+        "title": "Réauthentification",
+        "description": "Saisissez le nouveau mot de passe de la centrale Somfy.",
+        "data": {
+          "password": "Nouveau mot de passe"
+        }
       }
     },
     "error": {

@@ -43,6 +43,13 @@
           "image_server_url": "URL van lokale afbeeldingsserver",
           "image_count": "Aantal recente foto’s om weer te geven"
         }
+      },
+      "reauth_confirm": {
+        "title": "Opnieuw aanmelden",
+        "description": "Voer het nieuwe wachtwoord van de Somfy-centrale in.",
+        "data": {
+          "password": "Nieuw wachtwoord"
+        }
       }
     },
     "error": {
