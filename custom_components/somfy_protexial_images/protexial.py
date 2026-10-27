@@ -1033,57 +1033,6 @@ class SomfyProtexial:
             form = self.api.get_reset_link_err_payload()
             await self.__erase_default(form)
 
-    def _parse_installer_general_form(self, page_html: str) -> tuple[dict[str, str], set[str]]:
-        """Parse the installer general-settings form using browser submission rules."""
-        dom = pq(page_html)
-        form_dom = dom('form[name="i_reggen"]')
-        if not form_dom:
-            raise SomfyException("Installer general settings form not found")
-
-        form: dict[str, str] = {}
-        available_fields: set[str] = set()
-
-        for input_el in form_dom("input").items():
-            name = input_el.attr("name")
-            if not name or input_el.attr("disabled") is not None:
-                continue
-            available_fields.add(name)
-            input_type = (input_el.attr("type") or "text").lower()
-            if input_type in ("checkbox", "radio"):
-                if input_el.attr("checked") is None:
-                    continue
-                form[name] = input_el.attr("value") or ""
-            elif input_type in ("button", "reset", "file", "image"):
-                continue
-            else:
-                form[name] = input_el.attr("value") or ""
-
-        for select_el in form_dom("select").items():
-            name = select_el.attr("name")
-            if not name or select_el.attr("disabled") is not None:
-                continue
-            available_fields.add(name)
-            options = list(select_el("option").items())
-            if not options:
-                continue
-            selected = next(
-                (option for option in options if option.attr("selected") is not None),
-                options[0],
-            )
-            form[name] = selected.attr("value") or selected.text() or ""
-
-        for textarea_el in form_dom("textarea").items():
-            name = textarea_el.attr("name")
-            if not name or textarea_el.attr("disabled") is not None:
-                continue
-            available_fields.add(name)
-            form[name] = textarea_el.text() or ""
-
-        if "btn_save" not in form:
-            raise SomfyException("Installer general settings form is incomplete: btn_save")
-
-        return form, available_fields
-
     async def get_image_transmitter_status(self) -> dict:
         """Read the transmitter connection state from the image page.
 
@@ -1250,8 +1199,13 @@ class SomfyProtexial:
             available_fields.add(name)
             form[name] = textarea_el.text() or ""
 
-        if "btn_save" not in form:
-            raise SomfyException("Installer general settings form is incomplete: btn_save")
+        # Older Protexiom (e.g. 600 / 2008) uses a submit button named
+        # "action" with value "Sauvegarder" instead of "btn_save".
+        # Keep the original submit field in the payload for both variants.
+        if "btn_save" not in form and form.get("action") != "Sauvegarder":
+            raise SomfyException(
+                "Installer general settings form is incomplete: save button missing"
+            )
 
         return form, available_fields
 
